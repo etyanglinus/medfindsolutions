@@ -14,6 +14,7 @@ class ProviderPaymentConfirmed extends Mailable
         public ?string $expiresOn,
         public string $reference,
         public string $accessUrl,
+        public ?string $receiptUrl = null,
     ) {}
 
     public function build()

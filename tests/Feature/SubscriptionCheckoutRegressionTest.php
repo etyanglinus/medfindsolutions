@@ -68,13 +68,20 @@ class SubscriptionCheckoutRegressionTest extends TestCase
  $this->assertSame(1, $coupon->fresh()->usage_count);
 }
 
-    public function test_full_discount_cannot_create_a_manual_payment_or_a_zero_value_paystack_charge(): void {
- $this->supplier(); $this->coupon(["discount_value" => 100]);
+    public function test_full_discount_activates_without_paystack(): void {
+ $supplier = $this->supplier(); $coupon = $this->coupon(["discount_value" => 100]);
  DB::table("basic_payments")->updateOrInsert(["key" => "paystack_status"], ["value" => "active"]);
  DB::table("basic_payments")->updateOrInsert(["key" => "paystack_secret_key"], ["value" => "test-secret"]);
- $this->postJson(route("provider.paystack.start", ["type" => "supplier", "token" => "test-token"]), ["package" => "premium", "coupon_code" => "SAVE25"])->assertUnprocessable()->assertJsonValidationErrors("coupon_code");
- $this->assertDatabaseCount("provider_subscriptions", 0);
- $this->assertDatabaseCount("provider_payment_transactions", 0);
+ \Illuminate\Support\Facades\Http::fake();
+ $this->post(route("provider.paystack.start", ["type" => "supplier", "token" => "test-token"]), ["package" => "premium", "coupon_code" => "SAVE25"])
+     ->assertRedirect()->assertSessionHas("alert-type", "success");
+ \Illuminate\Support\Facades\Http::assertNothingSent();
+ $payment = \App\Models\ProviderPaymentTransaction::sole();
+ $this->assertSame(["coupon", "paid", 0.0], [$payment->gateway, $payment->status, (float) $payment->amount]);
+ $subscription = ProviderSubscription::sole();
+ $this->assertSame("approved", $subscription->status);
+ $this->assertNotNull($subscription->expires_at);
+ $this->assertSame(1, $coupon->fresh()->usage_count);
 }
 
     public function test_invalid_coupon_cannot_create_payment(): void {

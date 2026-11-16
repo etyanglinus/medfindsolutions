@@ -48,7 +48,7 @@ class ProviderPaystackService
         }
         $email = $client->email ?? $client->official_email;
         $quote = $couponCode ? app(SubscriptionCouponService::class)->quote($couponCode, $type, $code, $email, $plan['price']) : ['coupon' => null, 'price' => $plan['price'], 'original_price' => $plan['price'], 'discount_amount' => 0];
-        if ($quote['price'] <= 0) throw ValidationException::withMessages(['coupon_code' => __('Paystack checkout requires a positive payable amount. Choose a paid plan or a different coupon.')]);
+        if ($quote['price'] <= 0) return $this->activateFree($client, $type, $plan, $quote, $email);
         return DB::transaction(function () use ($client, $type, $plan, $quote, $email) {
             $profile = ProviderProfile::firstOrCreate(['provider_type' => $type, 'provider_id' => $client->id], ['status' => 'pending_payment']);
             $profile = ProviderProfile::whereKey($profile->id)->lockForUpdate()->firstOrFail();
@@ -192,24 +192,54 @@ class ProviderPaystackService
                 $payment->update(['status' => 'paid', 'paid_at' => now(), 'gateway_payload' => array_merge($payment->gateway_payload ?? [], ['verified_payment' => $data, 'received_after_account_deletion' => true])]);
                 return false;
             }
-            $expires = $profile->subscriptions()->where('status', 'approved')->where('expires_at', '>', now())->max('expires_at');
-            if (in_array($profile->provider_type, ['doctor', 'clinic'])) {
-                $legacyExpiry = $client->subscriptions()->where('status', 'approved')->where('expires_at', '>', now())->max('expires_at');
-                if ($legacyExpiry && (!$expires || $legacyExpiry > $expires)) $expires = $legacyExpiry;
-            }
-            $starts = $expires ? \Carbon\Carbon::parse($expires) : now();
-            $subscription->update(['status' => 'approved', 'approved_at' => now(), 'starts_at' => $starts, 'expires_at' => $starts->copy()->addMonths($subscription->duration_months)]);
-            if (in_array($profile->provider_type, ['doctor', 'clinic'])) {
-                $type = $profile->provider_type;
-                $legacy = $type === 'doctor' ? \Modules\Doctor\app\Models\DoctorSubscription::class : \Modules\Doctor\app\Models\ClinicSubscription::class;
-                $legacy::updateOrCreate(['transaction_code' => $payment->gateway_reference], [$type.'_id' => $client->id, 'package_name' => $subscription->package_name, 'plan_code' => $subscription->plan_code, 'package_price' => $subscription->amount, 'plan_duration' => $subscription->duration_months,
-                    'entitlements' => data_get($subscription->metadata, 'entitlements', []), 'payment_method' => 'paystack', 'status' => 'approved', 'approved_at' => $starts, 'expires_at' => $subscription->expires_at,
-                    'coupon_code' => data_get($subscription->metadata, 'coupon_code'), 'original_price' => data_get($subscription->metadata, 'original_price', $subscription->amount), 'discount_amount' => data_get($subscription->metadata, 'discount_amount', 0)]);
-                if (!data_get($subscription->metadata, 'admin_onboarding')) $client->update(['status' => 1]);
-            }
-            if ($profile->status === 'pending_payment') $profile->update(['status' => 'pending_approval']);
-            $payment->update(['status' => 'paid', 'paid_at' => now(), 'gateway_payload' => array_merge($payment->gateway_payload ?? [], ['verified_payment' => $data])]);
+            $this->activate($payment, $profile, $subscription, $client, ['verified_payment' => $data], 'paystack');
             return false;
+        });
+    }
+
+    /**
+     * Approve the plan (starting when any current plan ends), mirror it into the original
+     * specialist/facility tables, activate the account and mark the payment paid. Shared by
+     * Paystack settlement and fully discounted (free) plans.
+     */
+    private function activate(ProviderPaymentTransaction $payment, ProviderProfile $profile, ProviderSubscription $subscription, Model $client, array $payload, string $method): void
+    {
+        $expires = $profile->subscriptions()->where('status', 'approved')->where('expires_at', '>', now())->max('expires_at');
+        if (in_array($profile->provider_type, ['doctor', 'clinic'])) {
+            $legacyExpiry = $client->subscriptions()->where('status', 'approved')->where('expires_at', '>', now())->max('expires_at');
+            if ($legacyExpiry && (!$expires || $legacyExpiry > $expires)) $expires = $legacyExpiry;
+        }
+        $starts = $expires ? \Carbon\Carbon::parse($expires) : now();
+        $subscription->update(['status' => 'approved', 'approved_at' => now(), 'starts_at' => $starts, 'expires_at' => $starts->copy()->addMonths($subscription->duration_months)]);
+        if (in_array($profile->provider_type, ['doctor', 'clinic'])) {
+            $type = $profile->provider_type;
+            $legacy = $type === 'doctor' ? \Modules\Doctor\app\Models\DoctorSubscription::class : \Modules\Doctor\app\Models\ClinicSubscription::class;
+            $legacy::updateOrCreate(['transaction_code' => $payment->gateway_reference], [$type.'_id' => $client->id, 'package_name' => $subscription->package_name, 'plan_code' => $subscription->plan_code, 'package_price' => $subscription->amount, 'plan_duration' => $subscription->duration_months,
+                'entitlements' => data_get($subscription->metadata, 'entitlements', []), 'payment_method' => $method, 'status' => 'approved', 'approved_at' => $starts, 'expires_at' => $subscription->expires_at,
+                'coupon_code' => data_get($subscription->metadata, 'coupon_code'), 'original_price' => data_get($subscription->metadata, 'original_price', $subscription->amount), 'discount_amount' => data_get($subscription->metadata, 'discount_amount', 0)]);
+            if (!data_get($subscription->metadata, 'admin_onboarding')) $client->update(['status' => 1]);
+        }
+        if ($profile->status === 'pending_payment') $profile->update(['status' => 'pending_approval']);
+        $payment->update(['status' => 'paid', 'paid_at' => now(), 'gateway_payload' => array_merge($payment->gateway_payload ?? [], $payload)]);
+    }
+
+    /**
+     * A plan whose price a coupon brings to zero (or a free plan) needs no Paystack checkout:
+     * record a zero-amount "coupon" payment and activate straight away, exactly as a paid one.
+     */
+    private function activateFree(Model $client, string $type, array $plan, array $quote, ?string $email): ProviderPaymentTransaction
+    {
+        return DB::transaction(function () use ($client, $type, $plan, $quote, $email) {
+            $profile = ProviderProfile::firstOrCreate(['provider_type' => $type, 'provider_id' => $client->id], ['status' => 'pending_payment']);
+            $profile = ProviderProfile::whereKey($profile->id)->lockForUpdate()->firstOrFail();
+            if (in_array($type, ['school', 'supplier']) && !$client->provider_profile_id) $client->update(['provider_profile_id' => $profile->id]);
+            if ($quote['coupon']) app(SubscriptionCouponService::class)->consume($quote['coupon']);
+            $subscription = ProviderSubscription::create(['provider_profile_id' => $profile->id, 'plan_code' => $plan['id'], 'package_name' => $plan['name'], 'amount' => 0, 'currency' => 'KES', 'duration_months' => $plan['duration_months'], 'status' => 'pending',
+                'metadata' => ['entitlements' => $plan['entitlements'], 'coupon_code' => $quote['coupon']?->code, 'coupon_consumed' => (bool) $quote['coupon'], 'original_price' => $quote['original_price'], 'discount_amount' => $quote['discount_amount']]]);
+            $reference = 'FREE-'.Str::uuid();
+            $payment = ProviderPaymentTransaction::create(['provider_profile_id' => $profile->id, 'provider_subscription_id' => $subscription->id, 'gateway' => 'coupon', 'gateway_reference' => $reference, 'idempotency_key' => 'coupon:'.$reference, 'amount' => 0, 'currency' => 'KES', 'status' => 'initiated', 'gateway_payload' => ['expected_email' => $email]]);
+            $this->activate($payment, $profile, $subscription, $client, ['free_with_coupon' => $quote['coupon']?->code], 'coupon');
+            return $payment->refresh();
         });
     }
 

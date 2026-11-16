@@ -44,6 +44,7 @@ class ProviderProfileController extends Controller
     {
         $this->authorizeUpdate($profile);
         abort_unless(in_array($profile->provider_type, [ProviderProfile::TYPE_SCHOOL, ProviderProfile::TYPE_SUPPLIER], true), 404);
+        abort_unless(app(\App\Services\LicenceVerification::class)->hasValidLicence($profile->provider_type, $profile->provider_id), 422, __('Approve an unexpired licence or accreditation document (Provider Documents) before verifying this provider.'));
         $profile->update(['verification_status' => ProviderProfile::VERIFICATION_VERIFIED, 'verified_at' => now()]);
         return back()->with(['message' => __('Provider verification recorded.'), 'alert-type' => 'success']);
     }
@@ -53,6 +54,8 @@ class ProviderProfileController extends Controller
         $this->authorizeUpdate($profile);
         abort_unless($profile->provider && app(\App\Services\ProviderOnboardingService::class)->status($profile->provider, $profile->provider_type)['complete'], 422, __('The client must complete their profile, photo and verification document upload before publication.'));
         abort_unless($profile->status === ProviderProfile::STATUS_APPROVED, 422, __('Approve the provider before publishing.'));
+        abort_unless($profile->verification_status === ProviderProfile::VERIFICATION_VERIFIED, 422, __('Verify the provider before publishing.'));
+        abort_unless(app(\App\Services\LicenceVerification::class)->hasValidLicence($profile->provider_type, $profile->provider_id), 422, __('The provider has no approved, unexpired licence. Approve a current document before publishing.'));
         $profile->update(['status' => ProviderProfile::STATUS_PUBLISHED, 'published_at' => now()]);
         return back()->with(['message' => __('Provider published.'), 'alert-type' => 'success']);
     }

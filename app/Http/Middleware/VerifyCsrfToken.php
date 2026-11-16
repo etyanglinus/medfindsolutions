@@ -12,6 +12,8 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        '/stripe-webview'
+        '/stripe-webview',
+        // One-click unsubscribe from mail apps (no CSRF token possible); the URL itself is signed.
+        'provider/email-preferences/*',
     ];
 }

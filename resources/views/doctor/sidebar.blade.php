@@ -33,6 +33,11 @@
           <i class="fas fa-id-card"></i><span>{{ __('License & Documents') }}</span>
         </a>
       </li>
+      <li class="{{ request()->routeIs('listing.receipts*') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('listing.receipts', ['type' => 'doctor']) }}">
+          <i class="fas fa-file-invoice"></i><span>{{ __('Payment receipts') }}</span>
+        </a>
+      </li>
       @if($setting->doctor_can_add_social_links == 'active')
       <li class="{{ isRoute('doctor.social-link.*', 'active') }}">
         <a class="nav-link" href="{{ route('doctor.social-link.index') }}">

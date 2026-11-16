@@ -296,6 +296,25 @@ class PartnerPortalController extends Controller
         return back()->with('message', __('Product saved. It remains hidden until admin publishing approval.'));
     }
 
+    public function productImportTemplate(string $type)
+    {
+        abort_unless($type === 'supplier', 404);
+        return response(\App\Services\SupplierProductImport::template(), 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Content-Disposition' => 'attachment; filename="medfind-products-template.csv"']);
+    }
+
+    /** Bulk add/update products from a CSV file; each imported product waits for admin approval. */
+    public function importProducts(Request $request, string $type): RedirectResponse
+    {
+        abort_unless($type === 'supplier', 404);
+        [$record, $profile, , $entitlements] = $this->context($type); $this->requireFeature($profile, 'supplier_profile');
+        $limit = $this->portal->limit($profile, 'products_limit');
+        abort_if($limit === null, 403, __('An active package is required to manage products.'));
+        $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
+        $result = app(\App\Services\SupplierProductImport::class)->import($record, $request->file('file'), $limit, $entitlements);
+        $message = __('Import finished: :created added, :updated updated. Imported products stay hidden until an admin approves them.', ['created' => $result['created'], 'updated' => $result['updated']]);
+        return back()->with(['message' => $message, 'import_errors' => array_slice($result['errors'], 0, 100)]);
+    }
+
     public function quotations(string $type): View
     {
         abort_unless($type === 'supplier', 404);

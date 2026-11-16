@@ -4,6 +4,11 @@
 \Illuminate\Support\Facades\Route::get('listing-performance/{type}', [\App\Http\Controllers\ListingInsightsController::class, 'report'])->name('listing.report');
 \Illuminate\Support\Facades\Route::patch('listing-inquiries/{type}/{inquiry}', [\App\Http\Controllers\ProviderInboxController::class, 'update'])->name('listing.inquiries.update');
 \Illuminate\Support\Facades\Route::get('listing-inbox/{type}', [\App\Http\Controllers\ListingInsightsController::class, 'inquiries'])->name('listing.inbox');
+\Illuminate\Support\Facades\Route::get('listing-receipts/{type}', [\App\Http\Controllers\ProviderReceiptController::class, 'index'])->whereIn('type', ['doctor','clinic','school','supplier'])->name('listing.receipts');
+\Illuminate\Support\Facades\Route::get('listing-receipts/{type}/{transaction}', [\App\Http\Controllers\ProviderReceiptController::class, 'download'])->whereIn('type', ['doctor','clinic','school','supplier'])->whereNumber('transaction')->name('listing.receipts.download');
+\Illuminate\Support\Facades\Route::get('provider/receipt/{transaction}', [\App\Http\Controllers\ProviderReceiptController::class, 'signed'])->whereNumber('transaction')->middleware(['signed', 'throttle:30,1'])->name('provider.receipt.signed');
+\Illuminate\Support\Facades\Route::get('provider/email-preferences/{type}/{id}', [\App\Http\Controllers\ProviderEmailPreferenceController::class, 'show'])->whereIn('type', ['doctor','clinic','school','supplier'])->whereNumber('id')->middleware(['signed', 'throttle:30,1'])->name('provider.email-preferences');
+\Illuminate\Support\Facades\Route::post('provider/email-preferences/{type}/{id}', [\App\Http\Controllers\ProviderEmailPreferenceController::class, 'update'])->whereIn('type', ['doctor','clinic','school','supplier'])->whereNumber('id')->middleware(['signed', 'throttle:30,1'])->name('provider.email-preferences.update');
 \Illuminate\Support\Facades\Route::get('listing-plans/doctor', [\App\Http\Controllers\ListingInsightsController::class, 'doctorPlans'])->name('listing.doctor-plans');
 \Illuminate\Support\Facades\Route::patch('listing-inbox/{type}/{inquiry}', [\App\Http\Controllers\ListingInsightsController::class, 'updateInquiry'])->name('listing.inbox.update');
 // Short commit id of the code that is live, written by scripts/deploy.sh. The CI/CD pipeline polls this
@@ -20,11 +25,11 @@ use App\Http\Controllers\Admin\DashboardController;
 
 //maintenance mode route
 Route::get('/maintenance-mode', function () {
-    $setting = Illuminate\Support\Facades\Cache::get('setting', null);
-    if (! $setting?->maintenance_mode) {
+    $maintenance = app(\App\Services\MaintenanceService::class);
+    if (! $maintenance->isActive()) {
         return redirect()->route('home');
     }
-    return view('maintenance');
+    return response()->view('maintenance', ['until' => $maintenance->until()], 503);
 })->name('maintenance.mode');
 
 Route::get('set-language', [DashboardController::class, 'setLanguage'])->name('set-language');

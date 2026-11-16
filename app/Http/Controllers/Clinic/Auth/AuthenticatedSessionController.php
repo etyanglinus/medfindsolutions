@@ -59,6 +59,11 @@ class AuthenticatedSessionController extends Controller {
             return redirect()->route('login', ['type' => 'clinic'])
                 ->with(['message' => __('Invalid credentials.'), 'alert-type' => 'error']);
         }
+        if (! $clinic->email_verified_at) {
+            $verification = app(\App\Services\ProviderEmailVerification::class);
+            return redirect()->route('login', ['type' => 'clinic'])
+                ->with(['message' => $verification->message($clinic->email, $verification->sendLink('clinic', $clinic)), 'alert-type' => 'warning']);
+        }
 
         Auth::guard('clinic')->login($clinic, $request->boolean('remember'));
         $request->session()->regenerate();

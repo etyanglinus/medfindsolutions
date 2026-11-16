@@ -34,6 +34,7 @@
                                 </td>
                                 <td>
                                     <strong>{{ ucfirst(str_replace('_', ' ', $payment->status)) }}</strong>
+                                    @if($payment->status === 'paid')<a class="d-block small" href="{{ route('admin.provider-payments.receipt', $payment) }}"><i class="fas fa-file-pdf"></i> {{ __('Receipt') }}</a>@endif
                                     @if(in_array($payment->status, ['initiated', 'pending']) && $payment->gateway === 'paystack')
 <form method="POST" action="{{ route('admin.provider-payments.recheck', $payment) }}" class="mt-2">@csrf<button class="btn btn-sm btn-success">{{ __('Check with Paystack') }}</button></form>
 @if(data_get($payment->gateway_payload, 'last_check'))<small class="d-block text-muted mt-1">{{ __('Last check') }}: {{ data_get($payment->gateway_payload, 'last_check.status') }} ({{ data_get($payment->gateway_payload, 'last_check.channel') }}) {{ \Carbon\Carbon::parse(data_get($payment->gateway_payload, 'last_check.at'))->diffForHumans() }}</small>@endif

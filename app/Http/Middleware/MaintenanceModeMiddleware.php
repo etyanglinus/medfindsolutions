@@ -2,28 +2,31 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\MaintenanceService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Shows the maintenance page while maintenance is on. The response is HTTP 503 with Retry-After
+ * (search engines keep the page indexed), the page states when the site is back and reloads
+ * itself, and admins signed in to the admin panel can still use the site to check their work.
+ */
 class MaintenanceModeMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
-        $cachedSetting = Cache::get('setting', null);
-        if (($cachedSetting->maintenance_mode ?? 'inactive') === 'active') {
-            return redirect()->route('maintenance.mode')->with([
-                'alert-type' => 'error',
-                'message' => __("Under Maintenance Mode you can't access"),
-            ]);
+        $maintenance = app(MaintenanceService::class);
+        if (!$maintenance->isActive() || Auth::guard('admin')->check()) {
+            return $next($request);
         }
 
-        return $next($request);
+        $until = $maintenance->until();
+        $retryAfter = $until ? max(60, now()->diffInSeconds($until, false)) : 3600;
+        if ($request->expectsJson()) {
+            return response()->json(['message' => __('The site is under maintenance.'), 'back_at' => $until?->toIso8601String()], 503, ['Retry-After' => $retryAfter]);
+        }
+        return response()->view('maintenance', ['until' => $until], 503, ['Retry-After' => $retryAfter]);
     }
 }

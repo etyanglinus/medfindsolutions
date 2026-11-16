@@ -57,6 +57,7 @@ Route::group(['middleware'=>'translation', 'as' => 'admin.', 'prefix' => 'admin'
         Route::post('provider-profiles/{profile}/changes', [ProviderProfileController::class, 'requestChanges'])->name('provider-profiles.changes');
         Route::post('provider-profiles/{profile}/suspend', [ProviderProfileController::class, 'suspend'])->name('provider-profiles.suspend');
         Route::get('provider-payments', [ProviderPaymentReviewController::class, 'index'])->name('provider-payments.index');
+        Route::get('provider-payments/{transaction}/receipt', [\App\Http\Controllers\ProviderReceiptController::class, 'admin'])->name('provider-payments.receipt');
         Route::post('provider-payments/{transaction}/checkout', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'retry'])->name('provider-payments.checkout');
         Route::post('provider-payments/{transaction}/review', [ProviderPaymentReviewController::class, 'update'])->name('provider-payments.update');
         Route::post('provider-payments/{transaction}/recheck', [ProviderPaymentReviewController::class, 'recheck'])->middleware('throttle:20,1')->name('provider-payments.recheck');
@@ -64,6 +65,9 @@ Route::group(['middleware'=>'translation', 'as' => 'admin.', 'prefix' => 'admin'
         Route::post('supplier-categories', [SupplierCategoryController::class, 'store'])->name('supplier-categories.store');
         Route::put('supplier-categories/{category}', [SupplierCategoryController::class, 'update'])->name('supplier-categories.update');
         Route::get('supplier-listings', [SupplierListingReviewController::class, 'index'])->name('supplier-listings.index');
+        Route::put('listing-verification', [\App\Http\Controllers\Admin\ListingVerificationController::class, 'update'])->name('listing-verification.update');
+        Route::post('maintenance/start', [\App\Http\Controllers\Admin\MaintenanceController::class, 'start'])->name('maintenance.start');
+        Route::post('maintenance/stop', [\App\Http\Controllers\Admin\MaintenanceController::class, 'stop'])->name('maintenance.stop');
         Route::get('school-courses', [\App\Http\Controllers\Admin\SchoolCourseReviewController::class, 'index'])->name('school-courses.index');
         Route::put('school-courses/{course}/review', [\App\Http\Controllers\Admin\SchoolCourseReviewController::class, 'update'])->name('school-courses.review');
         Route::put('supplier-products/{product}/review', [SupplierListingReviewController::class, 'updateProduct'])->name('supplier-products.review');

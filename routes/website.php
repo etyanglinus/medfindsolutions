@@ -36,6 +36,8 @@ Route::middleware(['translation', 'maintenance.mode'])->group(function () {
         Route::put('partner/{type}/courses/{course}', [PartnerPortalController::class, 'saveCourse'])->whereIn('type', ['school', 'supplier'])->name('partner.courses.update');
         Route::delete('partner/{type}/courses/{course}', [PartnerPortalController::class, 'deleteCourse'])->whereIn('type', ['school', 'supplier'])->name('partner.courses.delete');
         Route::post('partner/{type}/products', [PartnerPortalController::class, 'saveProduct'])->whereIn('type', ['school', 'supplier'])->name('partner.products.store');
+        Route::get('partner/{type}/products/import-template', [PartnerPortalController::class, 'productImportTemplate'])->whereIn('type', ['supplier'])->name('partner.products.import-template');
+        Route::post('partner/{type}/products/import', [PartnerPortalController::class, 'importProducts'])->whereIn('type', ['supplier'])->name('partner.products.import');
         Route::put('partner/{type}/products/{product}', [PartnerPortalController::class, 'saveProduct'])->whereIn('type', ['school', 'supplier'])->name('partner.products.update');
         Route::delete('partner/{type}/products/{product}', [PartnerPortalController::class, 'deleteProduct'])->whereIn('type', ['school', 'supplier'])->name('partner.products.delete');
         Route::get('partner/{type}/products/{product}/catalogue', [PartnerPortalController::class, 'downloadCatalogue'])->whereIn('type', ['school', 'supplier'])->name('partner.products.catalogue');

@@ -38,6 +38,11 @@
           <i class="fas fa-id-card"></i><span>{{ __('License & Documents') }}</span>
         </a>
       </li>
+      <li class="{{ request()->routeIs('listing.receipts*') ? 'active' : '' }}">
+        <a class="nav-link" href="{{ route('listing.receipts', ['type' => 'clinic']) }}">
+          <i class="fas fa-file-invoice"></i><span>{{ __('Payment receipts') }}</span>
+        </a>
+      </li>
 
       {{-- ── Communication ───────────────────────────── --}}
       <li class="menu-header">{{ __('Communication') }}</li>

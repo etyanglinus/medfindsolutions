@@ -26,14 +26,14 @@ class PublicDirectory
 
     public function doctors(): Builder
     {
-        return Doctor::query()->publiclyVisible()->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
+        return app(LicenceVerification::class)->apply(Doctor::query(), 'doctor')->publiclyVisible()->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
             ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->whereJsonContains('entitlements->search_visibility', true));
     }
 
     public function clinics(): Builder
     {
-        return Clinic::query()->where('status', 1)->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
+        return app(LicenceVerification::class)->apply(Clinic::query(), 'clinic')->where('status', 1)->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
             ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
             ->where(fn ($w) => $w->whereJsonContains('entitlements->search_visibility', true)->orWhereJsonContains('entitlements->contact', true)->orWhereNull('entitlements')->orWhereJsonLength('entitlements', 0)));
     }

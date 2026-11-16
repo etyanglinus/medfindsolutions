@@ -48,8 +48,6 @@
     <x-admin.breadcrumb title="{{ __('Dashboard') }}" />
 
     <div class="section-body px-1">
-        @include('provider.partials.listing-insights', ['insightType' => 'doctor'])
-
       {{-- ═══════════════════════════════════════════════════════
            ROW 1 — Welcome + Plan badge
       ═══════════════════════════════════════════════════════ --}}
@@ -93,6 +91,9 @@
           <span>{{ __('You have no active subscription. Your profile is not publicly visible.') }}</span>
         </div>
       @endif
+
+      {{-- Listing performance, below the welcome header and plan status --}}
+      @include('provider.partials.listing-insights', ['insightType' => 'doctor'])
 
       {{-- ═══════════════════════════════════════════════════════
            ROW 2 — Stat cards

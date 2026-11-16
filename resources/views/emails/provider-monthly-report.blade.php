@@ -33,5 +33,5 @@
 @endif
 
 <p>{{ __('Keep your profile, photos and opening hours up to date: complete listings get more calls.') }} <a href="{{ $dashboardUrl }}">{{ __('Open my dashboard') }}</a></p>
-<p style="font-size:12px;color:#6b7280">{{ __('You receive this monthly summary because you have a listing on MedFind Solutions.') }}</p>
+<p style="font-size:12px;color:#6b7280">{{ __('You receive this monthly summary because you have a listing on MedFind Solutions.') }}@if($unsubscribeUrl) <a href="{{ $unsubscribeUrl }}" style="color:#6b7280">{{ __('Unsubscribe') }}</a>@endif</p>
 </div>

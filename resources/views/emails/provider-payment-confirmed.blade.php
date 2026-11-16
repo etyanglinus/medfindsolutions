@@ -10,6 +10,7 @@
 <p style="margin:24px 0">
     <a href="{{ $accessUrl }}" style="background:#2b5fde;color:#fff;padding:12px 24px;border-radius:24px;text-decoration:none;font-weight:bold">{{ __('Access my account') }}</a>
 </p>
+@if($receiptUrl)<p><a href="{{ $receiptUrl }}">{{ __('Download your receipt (PDF)') }}</a> — {{ __('receipts are also under "Payment receipts" in your portal.') }}</p>@endif
 <p>{{ __('Use the password you chose when you registered. If you have forgotten it, use "Forgot password" on the login page.') }}</p>
 <p>{{ __('After logging in, complete your profile and upload your verification documents. Your public listing is published once our team has reviewed them.') }}</p>
 <p>{{ __('This button works for 7 days. After that, log in from the website as usual.') }}</p>
