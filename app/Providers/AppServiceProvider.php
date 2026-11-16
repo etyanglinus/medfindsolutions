@@ -18,7 +18,8 @@ class AppServiceProvider extends ServiceProvider {
      * Register any application services.
      */
     public function register(): void {
-
+        // Per-request memo of verified providers for the public badge (reset for every request/job).
+        $this->app->scoped(\App\Services\LicenceVerification::class);
     }
 
     /**

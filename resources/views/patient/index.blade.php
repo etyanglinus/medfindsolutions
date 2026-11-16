@@ -50,7 +50,7 @@
                                 </div>
                                 <div class="card-body p-0 d-flex flex-column justify-content-between">
                                     <div>
-                                        <h5 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 15px;">{{ $doctor?->name }}</h5>
+                                        <h5 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 15px;">{{ $doctor?->name }}</h5>@include('patient.partials.verified-badge', ['type' => 'doctor', 'id' => $doctor?->id])
                                         <p class="text-muted text-xs mb-2 text-truncate" style="font-size: 13px;">{{ $doctor?->department?->name ?? __('General Specialist') }}</p>
                                         
                                         @if($doctor?->location?->name)
@@ -99,7 +99,7 @@
                                 </div>
                                 <div class="card-body p-0 d-flex flex-column justify-content-between">
                                     <div>
-                                        <h5 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 15px;">{{ $clinic?->name }}</h5>
+                                        <h5 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 15px;">{{ $clinic?->name }}</h5>@include('patient.partials.verified-badge', ['type' => 'clinic', 'id' => $clinic?->id])
                                         <p class="text-muted text-xs mb-2 text-truncate" style="font-size: 13px;">{{ $clinic?->specialty ?? __('Healthcare Clinic') }}</p>
                                         <div class="d-flex align-items-center justify-content-center gap-1 text-xs text-muted mb-3" style="font-size: 12px;">
                                             <i class="fas fa-map-marker-alt text-secondary"></i>
@@ -176,7 +176,7 @@
                         <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
                             <a href="{{ route('website.medical-supplier', ['slug' => $supplier->slug]) }}" class="mf-feature-card h-100 d-block text-decoration-none">
                                 <div class="mf-feature-card__icon"><i class="fas fa-boxes"></i></div>
-                                <h3>{{ $supplier->name }}</h3>
+                                <h3>{{ $supplier->name }}</h3>@include('patient.partials.verified-badge', ['type' => 'supplier', 'id' => $supplier->id])
                                 <p>{{ $supplier->categories->pluck('name')->implode(', ') ?: implode(', ', $supplier->supplier_types ?? []) }}</p>
                                 <span><i class="fas fa-map-marker-alt me-1"></i>{{ $supplier->address }}</span>
                             </a>

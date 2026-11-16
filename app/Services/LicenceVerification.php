@@ -39,6 +39,19 @@ class LicenceVerification
             ->where(fn ($w) => $w->whereNull('accreditation_expires_at')->orWhereDate('accreditation_expires_at', '>=', today()))->exists();
     }
 
+    /** @var array<string, array<int, true>> ids with a valid licence, per type, loaded once per request */
+    private array $verified = [];
+
+    /** For the public "Licence verified" badge: one query per provider type per request. */
+    public function isVerified(string $type, int|string|null $id): bool
+    {
+        if (!$id) return false;
+        $this->verified[$type] ??= DB::table('provider_documents')->where('provider_type', $type)->where('status', 'approved')
+            ->where(fn ($w) => $w->whereNull('accreditation_expires_at')->orWhereDate('accreditation_expires_at', '>=', today()))
+            ->distinct()->pluck('provider_id')->mapWithKeys(fn ($v) => [(int) $v => true])->all();
+        return isset($this->verified[$type][(int) $id]);
+    }
+
     public function setRequired(bool $on): void
     {
         DB::table('settings')->updateOrInsert(['key' => 'require_verified_listing'], ['value' => $on ? '1' : '0', 'updated_at' => now()]);

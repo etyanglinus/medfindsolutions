@@ -116,10 +116,10 @@ class SeoLandingController extends Controller
     private function card(string $type, $item): array
     {
         return match ($type) {
-            'doctor' => ['name' => $item->name, 'url' => route('website.doctor.details', $item->slug), 'subtitle' => $item->department?->name, 'place' => Str::limit(strip_tags((string) $item->address), 60), 'image' => $item->image ? url($item->image) : null, 'tier' => (int) $item->plan_tier],
-            'clinic' => ['name' => $item->name, 'url' => route('website.facility.details', $item->slug), 'subtitle' => $item->specialty, 'place' => $item->location, 'image' => $this->image($item->logo), 'tier' => (int) $item->plan_tier],
-            'supplier' => ['name' => $item->name, 'url' => route('website.medical-supplier', $item->slug), 'subtitle' => collect((array) $item->counties_served)->implode(', '), 'place' => $item->address, 'image' => $this->image($item->logo), 'tier' => (int) $item->plan_tier],
-            'school' => ['name' => $item->name, 'url' => route('website.healthcare-institution', $item->slug), 'subtitle' => $item->institution_type, 'place' => $item->location, 'image' => $this->image($item->logo), 'tier' => (int) $item->plan_tier],
+            'doctor' => ['type' => 'doctor', 'id' => $item->id, 'name' => $item->name, 'url' => route('website.doctor.details', $item->slug), 'subtitle' => $item->department?->name, 'place' => Str::limit(strip_tags((string) $item->address), 60), 'image' => $item->image ? url($item->image) : null, 'tier' => (int) $item->plan_tier],
+            'clinic' => ['type' => 'clinic', 'id' => $item->id, 'name' => $item->name, 'url' => route('website.facility.details', $item->slug), 'subtitle' => $item->specialty, 'place' => $item->location, 'image' => $this->image($item->logo), 'tier' => (int) $item->plan_tier],
+            'supplier' => ['type' => 'supplier', 'id' => $item->id, 'name' => $item->name, 'url' => route('website.medical-supplier', $item->slug), 'subtitle' => collect((array) $item->counties_served)->implode(', '), 'place' => $item->address, 'image' => $this->image($item->logo), 'tier' => (int) $item->plan_tier],
+            'school' => ['type' => 'school', 'id' => $item->id, 'name' => $item->name, 'url' => route('website.healthcare-institution', $item->slug), 'subtitle' => $item->institution_type, 'place' => $item->location, 'image' => $this->image($item->logo), 'tier' => (int) $item->plan_tier],
         };
     }
 
