@@ -268,4 +268,5 @@
 
     </div>{{-- /container --}}
 </div>{{-- /mf-public-page --}}
+@include('seo.browse-links', ['browseType' => 'school'])
 @endsection

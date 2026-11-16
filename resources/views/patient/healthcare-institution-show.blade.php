@@ -1,4 +1,5 @@
 @extends('layouts.patient.layout')
+@push('seo')@include('seo.jsonld', ['data' => \App\Support\StructuredData::school($institution, $institution->public_courses ?? $institution->courses)])@include('seo.jsonld', ['data' => \App\Support\StructuredData::breadcrumbs([['name' => __('Home'), 'url' => route('home')], ['name' => __('Healthcare schools'), 'url' => route('website.healthcare-courses')], ['name' => $institution->name, 'url' => url()->current()]])])@endpush
 @section('title')<title>{{ $institution->name }} - {{ $setting->app_name }}</title>@endsection
 @section('meta')<meta name="description" content="{{ \Illuminate\Support\Str::limit($institution->about ?: __('Healthcare training institution in Kenya.'), 155) }}">@endsection
 @section('patient-content')

@@ -173,4 +173,5 @@
 
     </div>
 </div>
+@include('seo.browse-links', ['browseType' => 'clinic'])
 @endsection

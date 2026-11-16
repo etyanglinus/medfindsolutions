@@ -20,6 +20,17 @@
 
     @yield('title')
     @yield('meta')
+    {{-- One canonical URL per page: filters, sorting and tracking parameters are dropped; pagination is kept. --}}
+    @php
+        $canonicalUrl = trim($__env->yieldContent('canonical'));
+        if ($canonicalUrl === '') {
+            $page = (int) request()->query('page', 1);
+            $canonicalUrl = url()->current().($page > 1 ? '?page='.$page : '');
+        }
+    @endphp
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+    @hasSection('robots')<meta name="robots" content="@yield('robots')">@endif
+    @stack('seo')
 
     <link rel="icon" type="image/png" href="{{ asset($setting->favicon) }}">
 

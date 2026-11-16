@@ -1,4 +1,5 @@
 @extends('layouts.patient.layout')
+@push('seo')@include('seo.jsonld', ['data' => \App\Support\StructuredData::supplier($supplier)])@include('seo.jsonld', ['data' => \App\Support\StructuredData::breadcrumbs([['name' => __('Home'), 'url' => route('home')], ['name' => __('Medical suppliers'), 'url' => route('website.medical-suppliers')], ['name' => $supplier->name, 'url' => url()->current()]])])@endpush
 @section('title')<title>{{ $supplier->name }} - {{ $setting->app_name }}</title>@endsection
 @section('meta')<meta name="description" content="{{ \Illuminate\Support\Str::limit($supplier->description ?: __('Healthcare supplier in Kenya.'), 155) }}">@endsection
 @section('patient-content')

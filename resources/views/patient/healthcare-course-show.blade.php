@@ -1,4 +1,5 @@
 @extends('layouts.patient.layout')
+@push('seo')@foreach($institutions as $offering)@foreach($offering->courses as $offeredCourse)@include('seo.jsonld', ['data' => \App\Support\StructuredData::course($offeredCourse, $offering)])@endforeach @endforeach @endpush
 @section('title')<title>{{ $title }} - {{ __('Healthcare courses') }} - {{ $setting->app_name }}</title>@endsection
 @section('meta')<meta name="description" content="{{ __('Published Kenyan institutions offering :course.', ['course' => $title]) }}">@endsection
 @section('patient-content')
