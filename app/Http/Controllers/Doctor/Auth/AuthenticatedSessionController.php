@@ -46,6 +46,11 @@ class AuthenticatedSessionController extends Controller {
             return redirect()->route('login', ['type' => 'doctor'])
                 ->with(['message' => __('Invalid Credentials'), 'alert-type' => 'error']);
         }
+        if (! $doctor->email_verified_at) {
+            $verification = app(\App\Services\ProviderEmailVerification::class);
+            return redirect()->route('login', ['type' => 'doctor'])
+                ->with(['message' => $verification->message($doctor->email, $verification->sendLink('doctor', $doctor)), 'alert-type' => 'warning']);
+        }
 
         $subscription = app(SubscriptionAccessService::class)->activeDoctorSubscription($doctor);
 

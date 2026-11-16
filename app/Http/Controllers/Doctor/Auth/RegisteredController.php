@@ -150,7 +150,8 @@ class RegisteredController extends Controller {
 
             // If the doctor still needs to complete subscription payment, send them there.
             // Otherwise (e.g. seeded/imported doctors without a registration token) go to login.
-            if ($doctor->registration_token) {
+            // Already-active specialists (e.g. verifying at login) go straight to sign in.
+            if ($doctor->registration_token && ! app(\Modules\Doctor\app\Services\SubscriptionAccessService::class)->activeDoctorSubscription($doctor)) {
                 $notification = ['message' => __('Email verified successfully. Please complete the package payment and wait for admin approval before logging in.'), 'alert-type' => 'success'];
                 return redirect()->route('doctor.subscription.complete', ['token' => $doctor->registration_token])->with($notification);
             }
