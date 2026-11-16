@@ -1,7 +1,7 @@
 name: CI / Deploy
 
 # Tests run on every push and pull request.
-# A push to main (e.g. merging a pull request) deploys to the live cPanel site once tests pass.
+# A push to main (e.g. merging a pull request) releases to the live cPanel site once tests pass.
 on:
   push:
     branches: ['**']
@@ -42,11 +42,16 @@ jobs:
         run: php artisan test --exclude-group known-failing
 
   deploy:
-    name: Deploy to cPanel
+    # The host does not allow inbound SSH, so deployment is pull-based:
+    # this job moves the `production` branch to the tested commit, and a cron job on the server
+    # (scripts/cron-deploy.sh, every minute) pulls it and runs scripts/deploy.sh.
+    name: Release to production
     needs: test
     if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write   # to move the production branch
     environment:
       name: production
       url: https://medfindsolutions.co.ke
@@ -55,29 +60,27 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Set up SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
-        run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Move production branch to the tested commit
+        run: git push origin "${GITHUB_SHA}:refs/heads/production"
 
-      - name: Deploy
-        env:
-          HOST: ${{ secrets.CPANEL_SSH_HOST }}
-          PORT: ${{ secrets.CPANEL_SSH_PORT }}
-          USER: ${{ secrets.CPANEL_SSH_USER }}
+      - name: Wait for the server to deploy it
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes \
-            "$USER@$HOST" 'bash -s -- main' < scripts/deploy.sh
+          want="${GITHUB_SHA:0:8}"
+          echo "Waiting for https://medfindsolutions.co.ke/__release to report $want (server cron checks every minute)"
+          for i in $(seq 1 40); do
+            got=$(curl -s --max-time 15 https://medfindsolutions.co.ke/__release || true)
+            echo "  live: ${got:-no answer}"
+            [ "$got" = "$want" ] && { echo "Deployed."; exit 0; }
+            sleep 15
+          done
+          echo "::error::The server did not deploy $want within 10 minutes. On the server, check: tail -n 60 ~/medfind-deploy.log"
+          exit 1
 
       - name: Smoke test
         run: |
-          sleep 5
           for path in / /facilities /login; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 "https://medfindsolutions.co.ke$path")
             echo "$path -> $code"

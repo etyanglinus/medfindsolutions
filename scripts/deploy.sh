@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# MedFind deploy script, run ON THE SERVER (cPanel) by the GitHub Actions pipeline:
-#   ssh user@host 'bash -s -- main' < scripts/deploy.sh
+# MedFind deploy script, run ON THE SERVER (cPanel). Normally started by scripts/cron-deploy.sh
+# when GitHub Actions moves the `production` branch after the tests pass.
 # It can also be run by hand from cPanel Terminal:
-#   bash ~/medfindsolutions.co.ke/scripts/deploy.sh main
+#   bash ~/medfindsolutions.co.ke/scripts/deploy.sh production
 #
 # What it does, in order:
 #   1. backs up the live .env (never stored in git)
@@ -15,7 +15,7 @@
 # User files (storage/, public/uploads/, .env) are never touched by git.
 set -Eeuo pipefail
 
-BRANCH="${1:-main}"
+BRANCH="${1:-production}"
 APP_DIR="${APP_DIR:-$HOME/medfindsolutions.co.ke}"
 PHP="${PHP_BIN:-php}"
 STATE_DIR="$HOME/.medfind-deploy"
@@ -63,6 +63,7 @@ git fetch --quiet origin "$BRANCH"
 TARGET="$(git rev-parse "origin/$BRANCH")"
 if [ "$TARGET" = "$PREVIOUS" ]; then
   echo "==> Already up to date."
+  git rev-parse --short=8 HEAD > storage/app/deployed-release
   rmdir "$LOCK"
   exit 0
 fi
@@ -99,6 +100,7 @@ fi
 chmod -R ug+rwX storage bootstrap/cache
 "$PHP" artisan up
 WENT_DOWN=0
+git rev-parse --short=8 HEAD > storage/app/deployed-release   # read by GET /__release
 
 ls -1t "$STATE_DIR"/env.* 2>/dev/null | tail -n +11 | xargs -r rm -f
 echo "$PREVIOUS" > "$STATE_DIR/previous-release"
