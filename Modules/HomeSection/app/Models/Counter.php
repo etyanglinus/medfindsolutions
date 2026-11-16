@@ -20,7 +20,7 @@ class Counter extends Model {
     ];
 
     public function getTitleAttribute(): ?string {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
 
     public function translation(): ?HasOne {

@@ -13,11 +13,11 @@ class Feature extends Model {
     protected $fillable = ['status', 'image', 'icon'];
 
     public function getDescriptionAttribute(): ?string {
-        return $this->translation->description;
+        return $this->translation?->description;
     }
 
     public function getTitleAttribute(): ?string {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
 
     public function translation(): ?HasOne {

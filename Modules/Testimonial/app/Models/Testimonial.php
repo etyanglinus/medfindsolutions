@@ -23,17 +23,17 @@ class Testimonial extends Model
 
     public function getNameAttribute(): ?string
     {
-        return $this->translation->name;
+        return $this->translation?->name;
     }
 
     public function getDesignationAttribute(): ?string
     {
-        return $this->translation->designation;
+        return $this->translation?->designation;
     }
 
     public function getCommentAttribute(): ?string
     {
-        return $this->translation->comment;
+        return $this->translation?->comment;
     }
 
     public function translation(): ?HasOne

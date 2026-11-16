@@ -1,13 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LiveMeetingController;
 use App\Http\Controllers\Doctor\ProfileController;
 use App\Http\Controllers\Doctor\DashboardController;
-use App\Http\Controllers\Doctor\DoctorMeetingController;
-use App\Http\Controllers\Doctor\DoctorMessageController;
-use App\Http\Controllers\Doctor\DoctorWithdrawController;
-use App\Http\Controllers\Doctor\ZoomCredentialController;
 use App\Http\Controllers\Doctor\Auth\RegisteredController;
 use App\Http\Controllers\Doctor\Auth\NewPasswordController;
 use App\Http\Controllers\Doctor\DoctorAppointmentController;
@@ -89,49 +84,10 @@ Route::group(['as' => 'doctor.', 'prefix' => 'doctor', 'middleware' => ['mainten
             Route::get('update-password', 'change_password')->name('change-password');
             Route::put('update-password', 'update_password')->name('update-password');
         });
-        Route::controller(DoctorAppointmentController::class)->group(function () {
-            Route::get('today-appointment', 'todayAppointment')->name('today.appointment');
-            Route::get('new-appointment', 'newAppointment')->name('new.appointment');
-            Route::get('all-appointment', 'allAppointment')->name('all.appointment');
-            Route::get('not-treated-appointment', 'notTreatedAppointments')->name('not.treated.appointment');
-            Route::get('old-appointment/{id}', 'oldAppointment')->name('old.appointment');
-            Route::get('treatment/{id}', 'treatment')->name('treatment');
-            Route::post('treatment-store/{id}', 'storeTreatment')->name('treatment.store');
-            Route::get('treatment-edit/{id}', 'editTreatment')->name('treatment.edit');
-            Route::post('treatment-update/{id}', 'updateTreatment')->name('treatment.update');
-            Route::get('delete-appointment-prescribe/{id}', 'deleteAppointmentPrescribe')->name('delete.appointment.prescribe');
-            Route::get('already-treatment/{id}', 'allReadyTreatment')->name('already.treatment');
-            Route::get('prescription/{id}', 'printPrescription')->name('print.prescription');
-            Route::get('payment-history', 'paymentHistory')->name('payment.history');
-            Route::get('schedule', 'schedule')->name('schedule');
-        });
-        Route::controller(DoctorMessageController::class)->group(function () {
-            Route::get('message', 'index')->name('message.index');
-            Route::get('message-box/{id}', 'messagebox')->name('message.box');
-            Route::get('get-message/{id}', 'getmessage')->name('get.message');
-            Route::get('seen-message/{id}', 'seenMessage')->name('seen.message');
-            Route::post('send-message', 'sendmessage')->name('send.message');
-        });
-        Route::resource('withdraw', DoctorWithdrawController::class)->only(['index', 'create', 'store', 'show']);
-        Route::get('get-withdraw-account-info/{id}', [DoctorWithdrawController::class, 'getWithDrawAccountInfo'])->name('get-withdraw-account-info');
-
-        Route::controller(ZoomCredentialController::class)->group(function () {
-            Route::get('zoom-credential', 'index')->name('zoom-credential');
-            Route::post('zoom-credential', 'store')->name('zoom-credential.store');
-        });
-
-        Route::controller(DoctorMeetingController::class)->group(function () {
-            Route::get('/zoom-meetings', 'index')->name('zoom-meetings');
-            Route::get('/create-zoom-meeting', 'create')->name('create-zoom-meeting');
-            Route::post('/store-zoom-meeting', 'store')->name('store-zoom-meeting');
-            Route::get('/edit-zoom-meeting/{id}', 'edit')->name('edit-zoom-meeting');
-            Route::post('/update-zoom-meeting/{id}', 'update')->name('update-zoom-meeting');
-            Route::delete('/delete-zoom-meeting/{id}', 'destroy')->name('delete-zoom-meeting');
-            
-            Route::get('/meeting-history', 'meetingHistory')->name('meeting-history');
-            Route::get('/upcomming-meeting', 'upCommingMeeting')->name('upcomming-meeting');
-
-        });
+        // Working hours shown on the public profile. Patient appointments, treatments, prescriptions,
+        // patient messaging, payouts and Zoom were template features MedFind does not offer; their
+        // routes were removed so they cannot be reached.
+        Route::get('schedule', [DoctorAppointmentController::class, 'schedule'])->name('schedule');
 
         Route::get('social-link', [DoctorSocialMediaController::class, 'index'])->name('social-link.index');
         Route::post('social-link', [DoctorSocialMediaController::class, 'store'])->name('social-link.store');

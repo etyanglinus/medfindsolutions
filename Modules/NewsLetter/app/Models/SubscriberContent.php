@@ -17,11 +17,11 @@ class SubscriberContent extends Model {
     protected $fillable = ['image'];
 
     public function getTitleAttribute(): ?string {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
 
     public function getDescriptionAttribute(): ?string {
-        return $this->translation->description;
+        return $this->translation?->description;
     }
 
     public function translation(): ?HasOne {

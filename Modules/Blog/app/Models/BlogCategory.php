@@ -16,7 +16,7 @@ class BlogCategory extends Model
     // make a accessor for translation
     public function getTitleAttribute(): ?string
     {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
     public function translation(): ?HasOne
     {

@@ -120,13 +120,13 @@
                                     <div class="form-group">
                                         <x-admin.form-input id="question" name="question" label="{{ __('Question') }}"
                                             placeholder="{{ __('Enter Question') }}"
-                                            value="{{ $faq->getTranslation($code)->question }}" required="true" />
+                                            value="{{ $faq->getTranslation($code)?->question }}" required="true" />
                                     </div>
 
                                     <div class="form-group">
                                         <x-admin.form-textarea id="answer" name="answer" label="{{ __('Answer') }}"
                                             placeholder="{{ __('Enter Answer') }}"
-                                            value="{{ $faq->getTranslation($code)->answer }}" maxlength="1000" required="true"/>
+                                            value="{{ $faq->getTranslation($code)?->answer }}" maxlength="1000" required="true"/>
                                     </div>
                             </div>
                         </div>

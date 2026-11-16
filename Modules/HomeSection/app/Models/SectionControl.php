@@ -28,58 +28,58 @@ class SectionControl extends Model {
     ];
 
     public function getWorkFirstHeadingAttribute(): ?string {
-        return $this->translation->work_first_heading;
+        return $this->translation?->work_first_heading;
     }
     public function getWorkSecondHeadingAttribute(): ?string {
-        return $this->translation->work_second_heading;
+        return $this->translation?->work_second_heading;
     }
     public function getWorkDescriptionAttribute(): ?string {
-        return $this->translation->work_description;
+        return $this->translation?->work_description;
     }
     public function getServiceFirstHeadingAttribute(): ?string {
-        return $this->translation->service_first_heading;
+        return $this->translation?->service_first_heading;
     }
     public function getServiceSecondHeadingAttribute(): ?string {
-        return $this->translation->service_second_heading;
+        return $this->translation?->service_second_heading;
     }
     public function getServiceDescriptionAttribute(): ?string {
-        return $this->translation->service_description;
+        return $this->translation?->service_description;
     }
     public function getDepartmentFirstHeadingAttribute(): ?string {
-        return $this->translation->department_first_heading;
+        return $this->translation?->department_first_heading;
     }
     public function getDepartmentSecondHeadingAttribute(): ?string {
-        return $this->translation->department_second_heading;
+        return $this->translation?->department_second_heading;
     }
     public function getDepartmentDescriptionAttribute(): ?string {
-        return $this->translation->department_description;
+        return $this->translation?->department_description;
     }
     public function getPatientFirstHeadingAttribute(): ?string {
-        return $this->translation->patient_first_heading;
+        return $this->translation?->patient_first_heading;
     }
     public function getPatientSecondHeadingAttribute(): ?string {
-        return $this->translation->patient_second_heading;
+        return $this->translation?->patient_second_heading;
     }
     public function getPatientDescriptionAttribute(): ?string {
-        return $this->translation->patient_description;
+        return $this->translation?->patient_description;
     }
     public function getDoctorFirstHeadingAttribute(): ?string {
-        return $this->translation->doctor_first_heading;
+        return $this->translation?->doctor_first_heading;
     }
     public function getDoctorSecondHeadingAttribute(): ?string {
-        return $this->translation->doctor_second_heading;
+        return $this->translation?->doctor_second_heading;
     }
     public function getDoctorDescriptionAttribute(): ?string {
-        return $this->translation->doctor_description;
+        return $this->translation?->doctor_description;
     }
     public function getBlogFirstHeadingAttribute(): ?string {
-        return $this->translation->blog_first_heading;
+        return $this->translation?->blog_first_heading;
     }
     public function getBlogSecondHeadingAttribute(): ?string {
-        return $this->translation->blog_second_heading;
+        return $this->translation?->blog_second_heading;
     }
     public function getBlogDescriptionAttribute(): ?string {
-        return $this->translation->blog_description;
+        return $this->translation?->blog_description;
     }
 
     public function translation(): ?HasOne {

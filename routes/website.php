@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\Patient\AppointmentController;
 use App\Http\Controllers\Patient\BlogController;
 use App\Http\Controllers\ProviderEngagementController;
 use App\Http\Controllers\Provider\PartnerAuthController;
@@ -77,16 +76,6 @@ Route::middleware(['translation', 'maintenance.mode'])->group(function () {
             Route::get('/blog-details/{slug}', 'blogDetails')->name('blog.details');
             Route::get('/blog-category/{slug}', 'blogCategory')->name('blog.category');
             Route::post('comment-store/{slug}', 'commentStore')->name('comment.store');
-        });
-
-        Route::controller(AppointmentController::class)->group(function () {
-            // ajax request for appointment
-            Route::get('get-appointment/', 'getAppointment');
-            Route::get('get-department-doctor/{id}', 'getDepartmentDoctor');
-
-            //appointment add to cart
-            Route::post('create-appointment', 'createAppointment')->name('create.appointment');
-            Route::get('remove-appointment/{id}', 'removeAppointment');
         });
 
         Route::post('{type}/{provider}/inquiries', [ProviderEngagementController::class, 'storeInquiry'])->whereIn('type', ['doctor', 'clinic'])->name('provider.inquiries.store');

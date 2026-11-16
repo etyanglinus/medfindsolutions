@@ -115,44 +115,6 @@
         </div>
         @endif
 
-        {{-- Today's Appointments --}}
-        <div class="col-6 col-md-3">
-          <div class="card portal-stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-              <div class="icon bg-info bg-opacity-10 text-info"><i class="fas fa-calendar-day"></i></div>
-              <div>
-                <div class="val">{{ count($today_appointment) }}</div>
-                <div class="lbl">{{ __("Today's Schedule") }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {{-- New / Pending --}}
-        <div class="col-6 col-md-3">
-          <div class="card portal-stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-              <div class="icon bg-primary bg-opacity-10 text-primary"><i class="fas fa-calendar-plus"></i></div>
-              <div>
-                <div class="val">{{ $new_appointment ?? 0 }}</div>
-                <div class="lbl">{{ __('New Appointments') }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {{-- Completed --}}
-        <div class="col-6 col-md-3">
-          <div class="card portal-stat-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-              <div class="icon bg-success bg-opacity-10 text-success"><i class="fas fa-calendar-check"></i></div>
-              <div>
-                <div class="val">{{ $success_appointment ?? 0 }}</div>
-                <div class="lbl">{{ __('Completed') }}</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
       </div>{{-- /stat row --}}
 
@@ -174,13 +136,7 @@
             <div class="col-6 col-sm-4 col-lg-2">
               <a href="{{ route('doctor.schedule') }}" class="quick-action">
                 <i class="fas fa-clock text-success"></i>
-                <span class="qa-label">{{ __('My Schedule') }}</span>
-              </a>
-            </div>
-            <div class="col-6 col-sm-4 col-lg-2">
-              <a href="{{ route('doctor.all.appointment') }}" class="quick-action">
-                <i class="fas fa-list-alt text-info"></i>
-                <span class="qa-label">{{ __('All Appointments') }}</span>
+                <span class="qa-label">{{ __('Working Hours') }}</span>
               </a>
             </div>
             @if($subscription?->hasEntitlement('inquiries'))
@@ -300,111 +256,6 @@
 
       </div>{{-- /plan + analytics --}}
 
-      {{-- ═══════════════════════════════════════════════════════
-           ROW 5 — Today's schedule
-      ═══════════════════════════════════════════════════════ --}}
-      <div class="card mb-4" style="border-radius:14px;border:none;box-shadow:0 2px 12px rgba(0,0,0,.07);">
-        <div class="card-header bg-white d-flex justify-content-between align-items-center" style="border-radius:14px 14px 0 0;border-bottom:1px solid #f1f3f5;padding:18px 22px 14px;">
-          <span class="fw-bold"><i class="fas fa-calendar-day text-info me-2"></i>{{ __("Today's Schedule") }}</span>
-          <a href="{{ route('doctor.schedule') }}" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-            {{ __('Manage Schedule') }}
-          </a>
-        </div>
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table today-table mb-0">
-              <thead>
-                <tr>
-                  <th class="ps-4">#</th>
-                  <th>{{ __('Patient') }}</th>
-                  <th>{{ __('Date') }}</th>
-                  <th>{{ __('Time Slot') }}</th>
-                  <th>{{ __('Payment') }}</th>
-                  <th class="pe-4">{{ __('Action') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @forelse($today_appointment as $i => $appt)
-                  <tr>
-                    <td class="ps-4">{{ $i + 1 }}</td>
-                    <td>
-                      <div class="fw-semibold small">{{ $appt->user?->name ?? '—' }}</div>
-                      <div class="text-muted" style="font-size:.75rem;">{{ $appt->user?->email }}</div>
-                    </td>
-                    <td class="small">{{ formattedDate($appt->date) }}</td>
-                    <td class="small">
-                      {{ strtoupper($appt->schedule?->start_time ?? '—') }}
-                      @if($appt->schedule?->end_time) – {{ strtoupper($appt->schedule->end_time) }} @endif
-                    </td>
-                    <td>
-                      @if($appt->payment_status == 0)
-                        <span class="status-badge-pending">{{ __('Pending') }}</span>
-                      @else
-                        <span class="status-badge-success">{{ __('Paid') }}</span>
-                      @endif
-                    </td>
-                    <td class="pe-4">
-                      <a href="{{ route('doctor.treatment', $appt->id) }}" class="btn btn-sm btn-success rounded-pill px-3">
-                        <i class="fas fa-notes-medical me-1"></i>{{ __('View') }}
-                      </a>
-                    </td>
-                  </tr>
-                @empty
-                  <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
-                      <i class="fas fa-calendar-check fa-lg mb-2 d-block"></i>
-                      {{ __('No appointments scheduled for today.') }}
-                    </td>
-                  </tr>
-                @endforelse
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card-footer bg-white border-0 px-4 py-3" style="border-radius:0 0 14px 14px;">
-          <a href="{{ route('doctor.all.appointment') }}" class="btn btn-outline-primary btn-sm rounded-pill px-4">
-            {{ __('View All Appointments') }}
-          </a>
-        </div>
-      </div>
-
-      {{-- ═══════════════════════════════════════════════════════
-           ROW 6 — Earnings chart (monthly)
-      ═══════════════════════════════════════════════════════ --}}
-      @use('Carbon\Carbon', 'Carbon')
-      <div class="card mb-4 chart-card">
-        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-          <span class="fw-bold">
-            <i class="fas fa-chart-area text-primary me-2"></i>
-            {{ __('Earnings') }} &mdash;
-            {{ request()->has('year') && request()->has('month')
-                ? Carbon::createFromFormat('Y-m', request('year').'-'.request('month'))->format('F Y')
-                : now()->format('F Y') }}
-          </span>
-          <form method="get" class="d-flex gap-2 align-items-center">
-            @php
-              $selYear  = request('year',  now()->year);
-              $selMonth = request('month', now()->month);
-            @endphp
-            <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="width:90px;">
-              @for($y = $oldestYear; $y <= $latestYear; $y++)
-                <option value="{{ $y }}" @selected($selYear == $y)>{{ $y }}</option>
-              @endfor
-            </select>
-            <select name="month" class="form-select form-select-sm" onchange="this.form.submit()" style="width:100px;">
-              @for($m = 1; $m <= 12; $m++)
-                <option value="{{ str_pad($m, 2, '0', STR_PAD_LEFT) }}" @selected($selMonth == $m)>
-                  {{ Carbon::createFromFormat('m', $m)->format('M') }}
-                </option>
-              @endfor
-            </select>
-          </form>
-        </div>
-        <div class="card-body" style="height:240px;">
-          <canvas id="earningsChart"></canvas>
-        </div>
-      </div>
-
     </div>{{-- /section-body --}}
   </section>
 </div>
@@ -415,36 +266,6 @@
 <script>
 (function () {
   "use strict";
-
-  /* ── Earnings chart ────────────────────────────────── */
-  var monthlyData = @json(json_decode($monthly_data));
-  var labels      = [];
-  for (var d = 1; d <= 31; d++) labels.push(String(d));
-
-  new Chart(document.getElementById('earningsChart'), {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: @json(__('Earnings')),
-        data: monthlyData,
-        borderColor: '#2b5fde',
-        backgroundColor: 'rgba(43,95,222,.07)',
-        fill: true,
-        tension: .35,
-        pointRadius: 2,
-        pointHoverRadius: 5,
-      }]
-    },
-    options: {
-      maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { grid: { display: false } },
-        y: { beginAtZero: true, ticks: { precision: 0 } }
-      }
-    }
-  });
 
   /* ── Profile views chart ───────────────────────────── */
   var pvChart = document.getElementById('profileViewsChart');

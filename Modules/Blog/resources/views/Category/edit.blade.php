@@ -66,7 +66,7 @@
                                             <div class="form-group">
                                                 <x-admin.form-input data-translate="true" id="title" name="title"
                                                     label="{{ __('Title') }}" placeholder="{{ __('Enter Title') }}"
-                                                    value="{{ old('title', $category->getTranslation($code)->title) }}"
+                                                    value="{{ old('title', $category->getTranslation($code)?->title) }}"
                                                     required="true" />
                                             </div>
                                         </div>

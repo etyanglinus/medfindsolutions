@@ -36,7 +36,7 @@ class Menu extends Model
 
     public function getLabelAttribute(): ?string
     {
-        return $this->translation->name;
+        return $this->translation?->name;
     }
     public function translation(): ?HasOne
     {

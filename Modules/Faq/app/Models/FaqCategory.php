@@ -14,7 +14,7 @@ class FaqCategory extends Model {
 
     // make a accessor for translation
     public function getTitleAttribute(): ?string {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
     public function translation(): ?HasOne {
         return $this->hasOne(FaqCategoryTranslation::class)->where('lang_code', getSessionLanguage());
