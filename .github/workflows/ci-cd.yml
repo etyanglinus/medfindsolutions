@@ -71,9 +71,10 @@ jobs:
           want="${GITHUB_SHA:0:8}"
           echo "Waiting for https://medfindsolutions.co.ke/__release to report $want (server cron checks every minute)"
           for i in $(seq 1 40); do
-            got=$(curl -s --max-time 15 https://medfindsolutions.co.ke/__release || true)
-            echo "  live: ${got:-no answer}"
-            [ "$got" = "$want" ] && { echo "Deployed."; exit 0; }
+            body=$(curl -s --max-time 15 -w '\n%{http_code}' https://medfindsolutions.co.ke/__release || true)
+            code=$(printf '%s' "$body" | tail -n1); got=$(printf '%s' "$body" | sed '$d' | head -c 40)
+            if [ "$code" = 200 ]; then echo "  live version: $got"; else echo "  /__release answered HTTP ${code:-none} (server still on an older version)"; fi
+            [ "$code" = 200 ] && [ "$got" = "$want" ] && { echo "Deployed."; exit 0; }
             sleep 15
           done
           echo "::error::The server did not deploy $want within 10 minutes. On the server, check: tail -n 60 ~/medfind-deploy.log"
