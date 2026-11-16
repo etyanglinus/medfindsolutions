@@ -87,7 +87,7 @@
                     <article class="mf-product-card h-100">
                         <div class="mf-product-card__img">
                             @if($product->image)
-                                <img src="{{ asset('storage/'.$product->image) }}" alt="{{ $product->name }}" loading="lazy">
+                                <img src="{{ asset('uploads/store/'.$product->image) }}" alt="{{ $product->name }}" loading="lazy">
                             @else
                                 <i class="fas fa-box-open"></i>
                             @endif
@@ -139,7 +139,7 @@
                             <div class="d-flex gap-3 align-items-start">
                                 <div class="mf-supplier-card__logo flex-shrink-0">
                                     @if($supplier->logo)
-                                        <img src="{{ asset(str_starts_with($supplier->logo,'partner-logos/') ? 'storage/'.$supplier->logo : $supplier->logo) }}" alt="{{ $supplier->name }}">
+                                        <img src="{{ asset(str_starts_with($supplier->logo,'partner-logos/') ? 'uploads/store/'.$supplier->logo : $supplier->logo) }}" alt="{{ $supplier->name }}">
                                     @else
                                         <i class="fas fa-boxes"></i>
                                     @endif
@@ -162,7 +162,7 @@
 
                             @if($supplier->promotional_banner)
                                 <div class="mt-3">
-                                    <img src="{{ asset('storage/'.$supplier->promotional_banner) }}"
+                                    <img src="{{ asset('uploads/store/'.$supplier->promotional_banner) }}"
                                          alt="{{ __('Promotion') }}" class="img-fluid rounded-3">
                                 </div>
                             @endif

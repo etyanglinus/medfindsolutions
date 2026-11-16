@@ -13,7 +13,7 @@
                 <div class="col-md-5"><input class="form-control" name="caption" placeholder="{{ __('Optional image caption') }}"></div>
                 <div class="col-md-2"><button class="btn btn-primary w-100">{{ __('Upload') }}</button></div>
             </form>
-            <div class="row">@forelse($clinic->galleryImages as $image)<div class="col-md-3 mb-3"><div class="card"><img src="{{ asset('storage/' . $image->image_path) }}" class="card-img-top" alt="{{ $image->caption }}" style="height:150px;object-fit:cover"><div class="card-body p-2"><small>{{ $image->caption }}</small><form action="{{ route('clinic.gallery.delete', $image) }}" method="POST" class="mt-2">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">{{ __('Remove') }}</button></form></div></div></div>@empty <p class="text-muted">{{ __('No gallery images yet.') }}</p>@endforelse</div>
+            <div class="row">@forelse($clinic->galleryImages as $image)<div class="col-md-3 mb-3"><div class="card"><img src="{{ asset('uploads/store/' . $image->image_path) }}" class="card-img-top" alt="{{ $image->caption }}" style="height:150px;object-fit:cover"><div class="card-body p-2"><small>{{ $image->caption }}</small><form action="{{ route('clinic.gallery.delete', $image) }}" method="POST" class="mt-2">@csrf @method('DELETE')<button class="btn btn-sm btn-outline-danger">{{ __('Remove') }}</button></form></div></div></div>@empty <p class="text-muted">{{ __('No gallery images yet.') }}</p>@endforelse</div>
         </div></div>
         @endif
         @if($subscription?->hasEntitlement('branches'))

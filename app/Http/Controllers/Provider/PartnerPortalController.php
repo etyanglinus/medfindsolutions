@@ -225,6 +225,7 @@ class PartnerPortalController extends Controller
         while ($record->courses()->where('slug', $slug)->when($course, fn ($q) => $q->where('id', '!=', $course->id))->exists()) $slug = $base . '-' . $index++;
         $data['slug'] = $slug;
         $data['approval_status'] = 'pending';
+        $data['admin_note'] = null; // a resubmission clears the previous review note
         if (empty($entitlements['featured_courses'])) $data['is_featured'] = false;
         if ($course) $course->update($data); else $record->courses()->create($data);
         return back()->with('message', __('Course saved and submitted for admin review.'));
@@ -265,7 +266,7 @@ class PartnerPortalController extends Controller
         while ($record->products()->where('slug', $data['slug'])->when($product, fn ($q) => $q->where('id', '!=', $product->id))->exists()) $data['slug'] = $base . '-' . $index++;
         if ($request->hasFile('image') && ! empty($entitlements['product_images'])) {
             if ($product?->image && str_starts_with($product->image, 'supplier-products/'.$record->id.'/')) Storage::disk('public')->delete($product->image);
-            $data['image'] = $request->file('image')->storePublicly('supplier-products/'.$record->id, 'public');
+            $imagePath = $request->file('image')->storePublicly('supplier-products/'.$record->id, 'public');
         }
         if ($request->hasFile('catalogue') && ! empty($entitlements['catalogue'])) {
             if ($product?->catalogue_path && str_starts_with($product->catalogue_path, 'supplier-catalogues/'.$record->id.'/')) Storage::disk('local')->delete($product->catalogue_path);
@@ -283,6 +284,8 @@ class PartnerPortalController extends Controller
         abort_if(count($additionalImages) + count($uploads) > $imageLimit, 422, __('Your package allows up to :limit additional images per product.', ['limit' => $imageLimit]));
         foreach ($uploads as $upload) $additionalImages[] = $upload->storePublicly('supplier-products/'.$record->id, 'public');
         unset($data['catalogue'], $data['image'], $data['additional_images'], $data['remove_additional_images'], $data['catalogue_is_public'], $data['remove_catalogue']);
+        // The uploaded file object is dropped above; keep the stored path (this used to be lost too).
+        if (isset($imagePath)) $data['image'] = $imagePath;
         $data['additional_images'] = ! empty($entitlements['product_images']) ? $additionalImages : [];
         $data['catalogue_is_public'] = $cataloguePublic && ! empty($data['catalogue_path'] ?? $product?->catalogue_path);
         $data['is_featured'] = ! empty($entitlements['featured_products']) && $request->boolean('is_featured');

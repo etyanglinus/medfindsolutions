@@ -3,13 +3,13 @@
 
     <article class="card my-4 overflow-hidden">
         @if($institution->cover_image)
-            <img src="{{ asset(str_starts_with($institution->cover_image, 'partner-covers/') ? 'storage/'.$institution->cover_image : $institution->cover_image) }}" alt="" style="width:100%;max-height:320px;object-fit:cover">
+            <img src="{{ asset(str_starts_with($institution->cover_image, 'partner-covers/') ? 'uploads/store/'.$institution->cover_image : $institution->cover_image) }}" alt="" style="width:100%;max-height:320px;object-fit:cover">
         @endif
 
         <div class="card-body p-lg-5">
             <div class="d-flex align-items-center gap-3">
                 @if($institution->logo)
-                    <img src="{{ asset(str_starts_with($institution->logo, 'partner-logos/') ? 'storage/'.$institution->logo : $institution->logo) }}" alt="" style="width:90px;height:90px;object-fit:cover">
+                    <img src="{{ asset(str_starts_with($institution->logo, 'partner-logos/') ? 'uploads/store/'.$institution->logo : $institution->logo) }}" alt="" style="width:90px;height:90px;object-fit:cover">
                 @endif
                 <div>
                     <span class="text-primary text-uppercase">{{ $institution->institution_type }}{{ $institution->ownership ? ' · '.$institution->ownership : '' }}</span>

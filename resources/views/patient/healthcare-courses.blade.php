@@ -88,7 +88,7 @@
                             <div class="d-flex gap-3 align-items-start">
                                 <div class="mf-school-card__logo flex-shrink-0">
                                     @if($institution->logo)
-                                        <img src="{{ asset(str_starts_with($institution->logo, 'partner-logos/') ? 'storage/'.$institution->logo : $institution->logo) }}"
+                                        <img src="{{ asset(str_starts_with($institution->logo, 'partner-logos/') ? 'uploads/store/'.$institution->logo : $institution->logo) }}"
                                              alt="{{ $institution->name }}">
                                     @else
                                         <i class="fas fa-graduation-cap"></i>
