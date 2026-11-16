@@ -107,6 +107,28 @@ class ProviderPaystackService
         return $payment;
     }
 
+    /**
+     * Ask Paystack for the current state of a stuck attempt and apply it if it has been paid.
+     * Safety net for M-Pesa / bank transfers that finish after the payer left the checkout page,
+     * and for sites where the webhook is not (yet) configured. Never marks anything paid unless
+     * Paystack itself reports success for the exact reference, amount, currency and email.
+     *
+     * @return string Paystack's transaction status (success, ongoing, abandoned, failed, ...) or "already_paid".
+     */
+    public function reconcile(ProviderPaymentTransaction $payment): string
+    {
+        abort_unless($payment->gateway === 'paystack', 422);
+        if ($payment->status === 'paid') return 'already_paid';
+        $response = Http::withToken($this->secret())->timeout(30)->get('https://api.paystack.co/transaction/verify/'.rawurlencode($payment->gateway_reference));
+        abort_unless($response->successful() && $response->json('status') === true && $response->json('data.reference') === $payment->gateway_reference, 502, __('Paystack could not be reached to check this payment.'));
+        $status = (string) $response->json('data.status');
+        $payment->update(['gateway_payload' => array_merge($payment->gateway_payload ?? [], ['last_check' => [
+            'at' => now()->toIso8601String(), 'status' => $status, 'channel' => $response->json('data.channel'), 'gateway_response' => $response->json('data.gateway_response'),
+        ]])]);
+        if ($status === 'success') $this->settle($response->json('data'));
+        return $status;
+    }
+
     public function settle(array $data): ?bool
     {
         return DB::transaction(function () use ($data) {

@@ -1,0 +1,77 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Services\ProviderPaystackService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Modules\Doctor\app\Models\Clinic;
+use Tests\TestCase;
+
+/** Reproduces a clinic that paid late (M-Pesa / bank transfer) after leaving the Paystack page. */
+class PaystackReconcileTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        DB::table('basic_payments')->insert([['key' => 'paystack_status', 'value' => 'active'], ['key' => 'paystack_secret_key', 'value' => 'test-secret']]);
+        Http::preventStrayRequests();
+    }
+
+    private function stuckClinicPayment()
+    {
+        $clinic = Clinic::create(['name' => 'Late Payer Clinic', 'slug' => 'late-payer', 'email' => 'payer@clinic.test', 'phone' => '0700000000', 'password' => bcrypt('password'), 'status' => 0, 'registration_token' => 'clinic-token']);
+        return [$clinic, app(ProviderPaystackService::class)->createAttempt($clinic, 'clinic', 'premium')];
+    }
+
+    private function paystackSays(string $status, $payment): void
+    {
+        Http::fake(['api.paystack.co/transaction/verify/*' => Http::response(['status' => true, 'data' => [
+            'status' => $status, 'reference' => $payment->gateway_reference, 'amount' => (int) round($payment->amount * 100),
+            'currency' => 'KES', 'channel' => 'mobile_money', 'gateway_response' => $status, 'customer' => ['email' => 'payer@clinic.test'],
+        ]])]);
+    }
+
+    public function test_unfinished_payment_is_left_pending(): void
+    {
+        [$clinic, $payment] = $this->stuckClinicPayment();
+        $this->paystackSays('ongoing', $payment);
+
+        $this->artisan('paystack:reconcile')->assertSuccessful();
+
+        $this->assertSame('initiated', $payment->fresh()->status);
+        $this->assertSame('ongoing', data_get($payment->fresh()->gateway_payload, 'last_check.status'));
+        $this->assertSame(0, (int) $clinic->fresh()->status);
+    }
+
+    public function test_late_successful_payment_activates_the_clinic_once(): void
+    {
+        [$clinic, $payment] = $this->stuckClinicPayment();
+        $this->paystackSays('success', $payment);
+
+        $this->artisan('paystack:reconcile')->assertSuccessful();
+        $this->artisan('paystack:reconcile', ['reference' => $payment->gateway_reference])->assertSuccessful();
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('approved', $payment->subscription->fresh()->status);
+        $this->assertSame(1, (int) $clinic->fresh()->status);
+        $this->assertSame(1, $clinic->subscriptions()->where('status', 'approved')->count());
+        Http::assertSentCount(1); // second run sees it is already paid and does not call Paystack again
+    }
+
+    public function test_wrong_amount_is_not_activated(): void
+    {
+        [$clinic, $payment] = $this->stuckClinicPayment();
+        Http::fake(['api.paystack.co/transaction/verify/*' => Http::response(['status' => true, 'data' => [
+            'status' => 'success', 'reference' => $payment->gateway_reference, 'amount' => 100, 'currency' => 'KES', 'customer' => ['email' => 'payer@clinic.test'],
+        ]])]);
+
+        $this->artisan('paystack:reconcile');
+
+        $this->assertSame('initiated', $payment->fresh()->status);
+        $this->assertSame(0, (int) $clinic->fresh()->status);
+    }
+}

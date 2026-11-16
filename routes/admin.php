@@ -59,6 +59,7 @@ Route::group(['middleware'=>'translation', 'as' => 'admin.', 'prefix' => 'admin'
         Route::get('provider-payments', [ProviderPaymentReviewController::class, 'index'])->name('provider-payments.index');
         Route::post('provider-payments/{transaction}/checkout', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'retry'])->name('provider-payments.checkout');
         Route::post('provider-payments/{transaction}/review', [ProviderPaymentReviewController::class, 'update'])->name('provider-payments.update');
+        Route::post('provider-payments/{transaction}/recheck', [ProviderPaymentReviewController::class, 'recheck'])->middleware('throttle:20,1')->name('provider-payments.recheck');
         Route::get('supplier-categories', [SupplierCategoryController::class, 'index'])->name('supplier-categories.index');
         Route::post('supplier-categories', [SupplierCategoryController::class, 'store'])->name('supplier-categories.store');
         Route::put('supplier-categories/{category}', [SupplierCategoryController::class, 'update'])->name('supplier-categories.update');
