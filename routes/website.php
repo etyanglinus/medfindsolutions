@@ -14,6 +14,8 @@ Route::middleware(['translation', 'maintenance.mode'])->group(function () {
     Route::post('subscription/{type}/quote', \App\Http\Controllers\SubscriptionQuoteController::class)
         ->whereIn('type', ['doctor', 'clinic', 'school', 'supplier'])->middleware('throttle:30,1')->name('subscription.quote');
     Route::get('/', [HomeController::class, 'index'])->name('home');
+    Route::get('sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'sitemap'])->name('sitemap');
+    Route::get('robots.txt', [\App\Http\Controllers\SitemapController::class, 'robots'])->name('robots');
     Route::get('home', fn() => to_route('home'));
 
     Route::name('website.')->group(function () {
@@ -46,6 +48,12 @@ Route::middleware(['translation', 'maintenance.mode'])->group(function () {
         Route::post('partner/{type}/documents', [\App\Http\Controllers\ProviderDocumentController::class, 'partnerStore'])->whereIn('type', ['school', 'supplier'])->name('partner.documents.store');
         Route::get('partner/{type}/subscription/{token}', [PartnerSubscriptionController::class, 'show'])->whereIn('type', ['school', 'supplier'])->name('partner.subscription');
         Route::get('partner/{type}/subscription', [PartnerSubscriptionController::class, 'renewal'])->middleware('auth:school,supplier')->whereIn('type', ['school', 'supplier'])->name('partner.subscription.renew');
+        // SEO landing pages (404 unless they list at least one live provider)
+        Route::get('specialists/{specialty}', [\App\Http\Controllers\SeoLandingController::class, 'specialty'])->where('specialty', '[a-z0-9-]+')->name('seo.specialty');
+        Route::get('specialists/{specialty}/{place}', [\App\Http\Controllers\SeoLandingController::class, 'specialtyPlace'])->where(['specialty' => '[a-z0-9-]+', 'place' => '[a-z0-9-]+'])->name('seo.specialty-place');
+        Route::get('facilities/in/{place}', [\App\Http\Controllers\SeoLandingController::class, 'facilities'])->where('place', '[a-z0-9-]+')->name('seo.facilities');
+        Route::get('medical-suppliers/in/{place}', [\App\Http\Controllers\SeoLandingController::class, 'suppliers'])->where('place', '[a-z0-9-]+')->name('seo.suppliers');
+        Route::get('healthcare-schools/in/{place}', [\App\Http\Controllers\SeoLandingController::class, 'schools'])->where('place', '[a-z0-9-]+')->name('seo.schools');
         Route::get('healthcare-courses', [SchoolDirectoryController::class, 'index'])->name('healthcare-courses');
         Route::get('medical-suppliers', [SupplierDirectoryController::class, 'index'])->name('medical-suppliers');
         Route::post('medical-suppliers/{slug}/quotations', [SupplierDirectoryController::class, 'quotation'])->middleware('throttle:10,1')->name('medical-supplier.quotations');

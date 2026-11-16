@@ -1,4 +1,5 @@
 @extends('layouts.patient.layout')
+@push('seo')@include('seo.jsonld', ['data' => \App\Support\StructuredData::physician($doctor, $reviews ?? null)])@include('seo.jsonld', ['data' => \App\Support\StructuredData::breadcrumbs([['name' => __('Home'), 'url' => route('home')], ['name' => __('Specialists'), 'url' => route('website.doctors')], ['name' => $doctor->name, 'url' => url()->current()]])])@endpush
 @section('title')<title>{{ $doctor?->seo_title ?? $doctor?->name }} - {{ $setting->app_name }}</title>@endsection
 @section('meta')<meta name="description" content="{{ $doctor?->seo_description ?? $doctor?->name }}"><meta property="og:title" content="{{ $doctor?->seo_title ?? $doctor?->name }}"><meta property="og:description" content="{{ $doctor?->seo_description ?? $doctor?->name }}"><meta property="og:image" content="{{ asset($doctor?->image) }}">@endsection
 @section('patient-content')
