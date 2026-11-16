@@ -20,11 +20,11 @@ use App\Http\Controllers\Admin\DashboardController;
 
 //maintenance mode route
 Route::get('/maintenance-mode', function () {
-    $setting = Illuminate\Support\Facades\Cache::get('setting', null);
-    if (! $setting?->maintenance_mode) {
+    $maintenance = app(\App\Services\MaintenanceService::class);
+    if (! $maintenance->isActive()) {
         return redirect()->route('home');
     }
-    return view('maintenance');
+    return response()->view('maintenance', ['until' => $maintenance->until()], 503);
 })->name('maintenance.mode');
 
 Route::get('set-language', [DashboardController::class, 'setLanguage'])->name('set-language');
