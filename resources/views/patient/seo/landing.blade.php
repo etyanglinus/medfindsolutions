@@ -36,6 +36,7 @@
                             </div>
                             <div class="mf-listing-card__body">
                                 <h2 class="h6 fw-bold mb-1"><a href="{{ $card['url'] }}" class="text-reset text-decoration-none">{{ $card['name'] }}</a></h2>
+                                @include('patient.partials.verified-badge', ['type' => $card['type'], 'id' => $card['id']])
                                 @if($card['subtitle'])<p class="small text-muted mb-1">{{ $card['subtitle'] }}</p>@endif
                                 @if($card['place'])<p class="small mb-2"><i class="fas fa-map-marker-alt text-secondary me-1" aria-hidden="true"></i>{{ $card['place'] }}</p>@endif
                                 <a class="btn btn-outline-primary btn-sm rounded-3 w-100 mt-2" href="{{ $card['url'] }}">{{ __('View profile') }} <i class="fas fa-arrow-right ms-1" aria-hidden="true"></i></a>

@@ -100,6 +100,7 @@
                                             {{ $institution->name }}
                                         </a>
                                     </h3>
+                                    @include('patient.partials.verified-badge', ['type' => 'school', 'id' => $institution->id])
                                     <p class="mf-school-card__meta">
                                         {{ $institution->institution_type }}
                                         @if($institution->location)

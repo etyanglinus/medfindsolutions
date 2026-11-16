@@ -2,6 +2,7 @@
     <form action="{{ route('admin.update-cookie-consent') }}" method="POST">
         @csrf
         @method('PUT')
+        <div class="alert alert-info">{{ __('Visitors see a compact bar at the bottom of the page with Accept and Decline. Google Analytics, Tag Manager and Facebook Pixel load only after Accept. Status and Link text below are used; the colour and message fields are kept for reference only.') }}</div>
         <div class="row">
             <div class="col-md-4">
                 <div class="form-group">

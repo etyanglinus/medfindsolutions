@@ -260,34 +260,41 @@
     </script>
 @endif
 
-<!-- Global User Cookie Banner Settings Management Scripts -->
+<!-- Cookie consent: a thin bar with Accept / Decline. The choice is kept for a year in mf_cookie_consent. -->
 @if ($setting->cookie_status == 'active')
-    <script src="{{ asset('patient/js/cookieconsent.min.js') }}"></script>
+    <div id="mf-cookie-bar" class="mf-cookie-bar" role="region" aria-label="{{ __('Cookie consent') }}" hidden>
+        <p class="mf-cookie-bar__text">{{ __('We use essential cookies to run this site, and analytics cookies only if you accept.') }} <a href="{{ route('website.privacy-policy') }}">{{ $setting->link_text ?: __('Privacy policy') }}</a></p>
+        <div class="mf-cookie-bar__actions">
+            <button type="button" class="mf-cookie-bar__btn mf-cookie-bar__btn--ghost" data-consent="declined">{{ __('Decline') }}</button>
+            <button type="button" class="mf-cookie-bar__btn" data-consent="accepted">{{ __('Accept') }}</button>
+        </div>
+    </div>
+    <style>
+        .mf-cookie-bar{position:fixed;left:12px;right:12px;bottom:12px;z-index:1080;display:flex;align-items:center;gap:12px;max-width:760px;margin:0 auto;padding:10px 12px 10px 16px;background:#0f172a;color:#e2e8f0;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.25);font-size:13px;line-height:1.4}
+        .mf-cookie-bar[hidden]{display:none}
+        .mf-cookie-bar__text{margin:0;flex:1;color:inherit}
+        .mf-cookie-bar__text a{color:#93c5fd;text-decoration:underline}
+        .mf-cookie-bar__actions{display:flex;gap:8px;flex-shrink:0}
+        .mf-cookie-bar__btn{border:0;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600;background:#2b5fde;color:#fff;cursor:pointer;min-height:36px}
+        .mf-cookie-bar__btn--ghost{background:transparent;color:#e2e8f0;border:1px solid #475569}
+        .mf-cookie-bar__btn:focus-visible{outline:2px solid #93c5fd;outline-offset:2px}
+        @media (max-width:575.98px){.mf-cookie-bar{left:8px;right:8px;bottom:8px;flex-wrap:wrap;gap:8px;padding:10px 12px}.mf-cookie-bar__actions{width:100%}.mf-cookie-bar__btn{flex:1}}
+    </style>
     <script>
         "use strict";
-        window.addEventListener("load", function() {
-            window.wpcc.init({
-                "border": "{{ $setting->border }}",
-                "corners": "{{ $setting->corners }}",
-                "colors": {
-                    "popup": {
-                        "background": "{{ $setting->background_color }}",
-                        "text": "{{ $setting->text_color }} !important",
-                        "border": "{{ $setting->border_color }}"
-                    },
-                    "button": {
-                        "background": "{{ $setting->btn_bg_color }}",
-                        "text": "{{ $setting->btn_text_color }}"
-                    }
-                },
-                "content": {
-                    "href": "{{ route('website.privacy-policy') }}",
-                    "message": "{{ $setting->message }}",
-                    "link": "{{ $setting->link_text }}",
-                    "button": "{{ $setting->btn_text }}"
-                }
-            })
-        });
+        (function () {
+            var bar = document.getElementById('mf-cookie-bar');
+            if (!bar || /(?:^|;\s*)mf_cookie_consent=/.test(document.cookie)) return;
+            bar.hidden = false;
+            bar.addEventListener('click', function (e) {
+                var choice = e.target.closest('[data-consent]');
+                if (!choice) return;
+                var value = choice.getAttribute('data-consent');
+                document.cookie = 'mf_cookie_consent=' + value + ';max-age=31536000;path=/;SameSite=Lax' + (location.protocol === 'https:' ? ';Secure' : '');
+                bar.hidden = true;
+                if (value === 'accepted' && window.mfLoadTrackers) window.mfLoadTrackers();
+            });
+        })();
     </script>
 @endif
 

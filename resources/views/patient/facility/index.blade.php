@@ -107,11 +107,7 @@
                         <div class="mf-listing-card__body d-flex flex-column" style="min-height:170px">
                             <div class="d-flex align-items-start justify-content-between gap-1 mb-1">
                                 <h3 style="font-size:.95rem;line-height:1.35">{{ $clinic->name }}</h3>
-                                @if($subscription?->hasEntitlement('top_clinic_badge') || $subscription?->hasEntitlement('verified_badge'))
-                                    <span class="mf-badge mf-badge--icon flex-shrink-0" title="{{ __('Verified Facility') }}">
-                                        <i class="fas fa-check-circle"></i>
-                                    </span>
-                                @endif
+                                @include('patient.partials.verified-badge', ['type' => 'clinic', 'id' => $clinic->id])
                             </div>
 
                             <p class="mb-1">{{ $clinic->specialty ?? __('Healthcare facility') }}</p>

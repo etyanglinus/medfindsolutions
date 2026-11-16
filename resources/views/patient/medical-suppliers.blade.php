@@ -150,9 +150,7 @@
                                     </h3>
                                     <p class="mf-supplier-card__sub">{{ implode(' · ', $supplier->supplier_types ?? []) }}</p>
                                     <div class="d-flex flex-wrap gap-1">
-                                        @if(!empty($supplier->public_entitlements['verified_badge']) && $supplier->providerProfile?->isVerified())
-                                            <span class="mf-badge mf-badge--verified"><i class="fas fa-check-circle"></i>{{ __('Verified') }}</span>
-                                        @endif
+                                        @include('patient.partials.verified-badge', ['type' => 'supplier', 'id' => $supplier->id])
                                         @foreach(array_slice($supplier->categories->pluck('name')->all(), 0, 3) as $cat)
                                             <span class="mf-badge">{{ $cat }}</span>
                                         @endforeach
