@@ -319,7 +319,7 @@ class HomeController extends Controller {
         if ($feeRange === '2000_5000') $query->whereBetween('consultation_fee', [2000, 5000]);
         if ($feeRange === 'over_5000') $query->where('consultation_fee', '>', 5000);
 
-        $clinics = $query->paginate(12)->withQueryString();
+        $clinics = \App\Support\PlanRanking::apply($query, 'clinic')->paginate(12)->withQueryString();
 
         $specialties = Clinic::where('status', 1)
             ->whereHas('subscriptions', function ($query) {
@@ -568,8 +568,8 @@ class HomeController extends Controller {
             ->when($insurance, fn ($query) => $query->whereHas('translations', fn ($translation) => $translation->where('accepted_insurance', 'like', "%{$insurance}%")))
             ->when($feeRange === 'under_2000', fn ($query) => $query->where('fee', '<', 2000))
             ->when($feeRange === '2000_5000', fn ($query) => $query->whereBetween('fee', [2000, 5000]))
-            ->when($feeRange === 'over_5000', fn ($query) => $query->where('fee', '>', 5000))
-            ->orderBy('name', 'asc')->paginate($pagination_qty)->withQueryString();
+            ->when($feeRange === 'over_5000', fn ($query) => $query->where('fee', '>', 5000));
+        $doctors = \App\Support\PlanRanking::apply($doctors, 'doctor')->paginate($pagination_qty)->withQueryString();
 
         $insurances = \Modules\Doctor\app\Models\InsuranceProvider::active()->pluck('name');
 
@@ -630,7 +630,7 @@ class HomeController extends Controller {
             });
         }
 
-        $doctors = $doctors->paginate($pagination_qty);
+        $doctors = \App\Support\PlanRanking::apply($doctors, 'doctor')->paginate($pagination_qty);
         $doctors = $doctors->appends($request->all());
 
         $locations = Location::select('id')->with([
