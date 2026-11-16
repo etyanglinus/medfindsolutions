@@ -1,0 +1,12 @@
+@extends('layouts.patient.layout')
+@section('title')<title>{{ __('Verification documents') }}</title>@endsection
+@section('patient-content')
+@include('provider.onboarding-notice')
+<main class="mf-public-page py-5"><div class="container"><div class="row g-4"><div class="col-lg-5"><div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4"><h1 class="h4">{{ __('Submit verification document') }}</h1><p class="text-muted">{{ __('Documents are stored privately and reviewed by the MedFind admin team.') }}</p><form method="POST" enctype="multipart/form-data" action="{{ route('website.partner.documents.store', ['type' => $type]) }}">@csrf
+<label class="form-label">{{ __('Licence or accreditation body') }}</label><input class="form-control mb-3" name="licensing_body" maxlength="255" required>
+<label class="form-label">{{ __('Verification body, if different') }}</label><input class="form-control mb-3" name="verification_body" maxlength="255">
+<label class="form-label">{{ __('Registration number') }}</label><input class="form-control mb-3" name="registration_number" maxlength="100" required>
+<label class="form-label">{{ __('Accreditation expiry date') }}</label><input class="form-control mb-3" type="date" name="accreditation_expires_at" min="{{ today()->toDateString() }}">
+<label class="form-label">{{ __('Document file (PDF, JPG, PNG; up to 10 MB)') }}</label><input class="form-control mb-3" type="file" name="license" accept=".pdf,.jpg,.jpeg,.png" required>
+<button class="btn btn-primary">{{ __('Submit for review') }}</button></form></div></div></div><div class="col-lg-7"><div class="card border-0 shadow-sm rounded-4"><div class="card-body p-4"><h2 class="h5">{{ __('Submission history') }}</h2>@forelse($documents as $document)<div class="border-bottom py-3"><strong>{{ $document->licensing_body }}</strong><div>{{ __('Registration number') }}: {{ $document->registration_number }} · {{ __('Expires') }}: {{ $document->accreditation_expires_at?->format('d M Y') ?? '—' }}</div><span class="badge bg-{{ $document->status === 'approved' ? 'success' : ($document->status === 'rejected' ? 'danger' : 'warning') }}">{{ ucfirst($document->status) }}</span>@if($document->admin_note)<p class="mb-0 mt-2 text-muted">{{ $document->admin_note }}</p>@endif</div>@empty<p class="text-muted">{{ __('No documents submitted yet.') }}</p>@endforelse</div></div></div></div></div></main>
+@endsection

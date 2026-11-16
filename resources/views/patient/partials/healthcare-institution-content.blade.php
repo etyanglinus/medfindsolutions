@@ -1,0 +1,111 @@
+<main class="container py-5">
+    <a href="{{ route('website.healthcare-courses') }}">← {{ __('All institutions') }}</a>
+
+    <article class="card my-4 overflow-hidden">
+        @if($institution->cover_image)
+            <img src="{{ asset(str_starts_with($institution->cover_image, 'partner-covers/') ? 'storage/'.$institution->cover_image : $institution->cover_image) }}" alt="" style="width:100%;max-height:320px;object-fit:cover">
+        @endif
+
+        <div class="card-body p-lg-5">
+            <div class="d-flex align-items-center gap-3">
+                @if($institution->logo)
+                    <img src="{{ asset(str_starts_with($institution->logo, 'partner-logos/') ? 'storage/'.$institution->logo : $institution->logo) }}" alt="" style="width:90px;height:90px;object-fit:cover">
+                @endif
+                <div>
+                    <span class="text-primary text-uppercase">{{ $institution->institution_type }}{{ $institution->ownership ? ' · '.$institution->ownership : '' }}</span>
+                    <h1 class="mb-1">{{ $institution->name }}</h1>
+                    <p class="text-muted mb-0">{{ $institution->location }}</p>
+                    @if($institution->providerProfile?->isVerified())
+                        <span class="badge bg-success">{{ __('Verified by MedFind') }}</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="row g-5 mt-3">
+                <div class="col-lg-8">
+                    <h2 class="h4">{{ __('About the institution') }}</h2>
+                    <p>{{ $institution->about }}</p>
+
+                    @if(!empty($institution->public_entitlements['intake_promotion']) && $institution->intake_campaign_title && (!$institution->intake_campaign_ends_at || $institution->intake_campaign_ends_at->isFuture()))
+                        <div class="alert alert-info">
+                            <h3 class="h5">{{ $institution->intake_campaign_title }}</h3>
+                            @if($institution->intake_campaign_ends_at)
+                                <p class="mb-0">{{ __('Applications close :date', ['date' => $institution->intake_campaign_ends_at->format('d M Y')]) }}</p>
+                            @endif
+                        </div>
+                    @endif
+
+                    <div class="row g-3">
+                        @foreach([__('Campus facilities') => 'facilities', __('Practical training') => 'practical_training', __('Accommodation') => 'accommodation', __('International pathways') => 'international_pathways'] as $label => $field)
+                            @if($institution->$field && (! $loop->last || !empty($institution->public_entitlements['international_pathways'])))
+                                <div class="col-md-6">
+                                    <h3 class="h6">{{ $label }}</h3>
+                                    <p>{{ $institution->$field }}</p>
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+
+                    <h2 class="h4 mt-4">{{ __('Approved courses') }}</h2>
+                    @forelse($institution->public_courses as $course)
+                        <section class="border rounded p-3 mb-3">
+                            <h3 class="h5"><a href="{{ route('website.healthcare-course', ['slug' => $course->slug]) }}">{{ $course->name }}</a></h3>
+                            <p>{{ $course->description }}</p>
+                            <p class="mb-1"><strong>{{ __('Intake') }}:</strong> {{ $course->intake_information ?: __('Contact admissions') }}</p>
+                            @if($course->intake_starts_at || $course->intake_ends_at)
+                                <p class="mb-1"><strong>{{ __('Dates') }}:</strong> {{ $course->intake_starts_at?->format('d M Y') ?? __('Open') }} – {{ $course->intake_ends_at?->format('d M Y') ?? __('Not specified') }}</p>
+                            @endif
+                            <p class="mb-1"><strong>{{ __('Fees') }}:</strong> {{ $course->fees ?: __('Contact admissions') }}</p>
+                            <p class="mb-0"><strong>{{ __('Application') }}:</strong> {{ $course->application_information }}</p>
+                            <a href="#enquiry" class="btn btn-sm btn-outline-primary mt-2" onclick="document.getElementById('enquiry-course').value='{{ $course->id }}'">{{ __('Enquire about course') }}</a>
+                        </section>
+                    @empty
+                        <p class="text-muted">{{ __('No courses are currently published.') }}</p>
+                    @endforelse
+                </div>
+
+                <aside class="col-lg-4">
+                    <div class="bg-light p-4 rounded">
+                        <h2 class="h5">{{ __('Admissions contact') }}</h2>
+                        <p>{{ $institution->contact_person }}<br><a href="tel:{{ $institution->phone }}">{{ $institution->phone }}</a><br><a href="mailto:{{ $institution->official_email }}">{{ $institution->official_email }}</a></p>
+                        @if(!empty($institution->public_entitlements['website']) && $institution->website)
+                            <a href="{{ $institution->website }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">{{ __('Institution website') }}</a>
+                        @endif
+                        @if(!empty($institution->public_entitlements['application_information']) && $institution->application_url)
+                            <a href="{{ $institution->application_url }}" target="_blank" rel="noopener" class="btn btn-primary btn-sm">{{ __('Apply online') }}</a>
+                        @endif
+                        @if(!empty($institution->public_entitlements['location_map']) && $institution->location_map_url)
+                            <a href="{{ $institution->location_map_url }}" target="_blank" rel="noopener" class="d-block mt-3">{{ __('View map') }}</a>
+                        @endif
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </article>
+
+    <section class="card" id="enquiry">
+        <div class="card-body p-lg-4">
+            <h2 class="h4">{{ __('Contact admissions') }}</h2>
+            <p class="text-muted">{{ __('Your enquiry goes directly to the institution and is also recorded in its portal.') }}</p>
+            <form method="POST" action="{{ route('website.healthcare-institution.enquiries', ['slug' => $institution->slug]) }}">
+                @csrf
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label>{{ __('Your name') }}</label><input class="form-control" name="name" required maxlength="255"></div>
+                    <div class="col-md-6 mb-3"><label>{{ __('Email') }}</label><input class="form-control" type="email" name="email" required maxlength="255"></div>
+                    <div class="col-md-6 mb-3"><label>{{ __('Phone') }}</label><input class="form-control" name="phone" maxlength="40"></div>
+                    <div class="col-md-6 mb-3">
+                        <label>{{ __('Course') }}</label>
+                        <select class="form-control" id="enquiry-course" name="healthcare_course_id">
+                            <option value="">{{ __('General enquiry') }}</option>
+                            @foreach($institution->public_courses as $course)
+                                <option value="{{ $course->id }}">{{ $course->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="col-12 mb-3"><label>{{ __('Message') }}</label><textarea class="form-control" name="message" rows="4" required maxlength="3000"></textarea></div>
+                    <div class="col-12"><button class="btn btn-primary">{{ __('Send enquiry') }}</button></div>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>

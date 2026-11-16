@@ -1,0 +1,2 @@
+@props(['href' => 'javascript:;', 'title' => __('View')])
+<a href="{{ $href }}" {{ $attributes->merge(['class' => 'm-1 text-white btn btn-sm btn-info']) }} title="{{ $title }}"><i class="fa fa-eye"></i></a>

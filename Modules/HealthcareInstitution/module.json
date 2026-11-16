@@ -1,0 +1,11 @@
+{
+    "name": "HealthcareInstitution",
+    "alias": "healthcareinstitution",
+    "description": "Healthcare schools and institution listings",
+    "keywords": ["healthcare", "education", "courses"],
+    "priority": 0,
+    "providers": [
+        "Modules\\HealthcareInstitution\\app\\Providers\\HealthcareInstitutionServiceProvider"
+    ],
+    "files": []
+}

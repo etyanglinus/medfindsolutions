@@ -1,0 +1,1 @@
+<li class="nav-item"><a class="nav-link active" id="paystack-tab" data-bs-toggle="tab" href="#paystack_tab" role="tab" aria-controls="paystack" aria-selected="true">{{ __('Paystack') }}</a></li>

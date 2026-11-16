@@ -1,0 +1,11 @@
+{
+    "name": "MedicalSupplier",
+    "alias": "medicalsupplier",
+    "description": "Medical supplier discovery and quotation requests",
+    "keywords": ["medical", "suppliers", "equipment"],
+    "priority": 0,
+    "providers": [
+        "Modules\\MedicalSupplier\\app\\Providers\\MedicalSupplierServiceProvider"
+    ],
+    "files": []
+}
