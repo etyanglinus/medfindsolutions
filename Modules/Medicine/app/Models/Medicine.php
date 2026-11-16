@@ -14,7 +14,7 @@ class Medicine extends Model {
     protected $fillable = ['status'];
 
     public function getNameAttribute(): ?string {
-        return $this->translation->name;
+        return $this->translation?->name;
     }
 
     public function translation(): ?HasOne {

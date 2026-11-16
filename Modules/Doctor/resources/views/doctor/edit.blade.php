@@ -108,7 +108,7 @@
                                             <x-admin.form-input id="licensing_body" name="licensing_body" data-translate="true"
                                                 label="{{ __('Licensing Body') }}"
                                                 placeholder="{{ __('Enter Licensing Body') }}"
-                                                value="{{ $doctor->getTranslation($code)->licensing_body }}"
+                                                value="{{ $doctor->getTranslation($code)?->licensing_body }}"
                                                 required="true" />
                                         </div>
                                         <div
@@ -116,7 +116,7 @@
                                             <x-admin.form-textarea id="accepted_insurance" name="accepted_insurance" data-translate="true"
                                                 label="{{ __('Accepted Insurance') }}"
                                                 placeholder="{{ __('Enter Accepted Insurance') }}"
-                                                value="{{ $doctor->getTranslation($code)->accepted_insurance }}"
+                                                value="{{ $doctor->getTranslation($code)?->accepted_insurance }}"
                                                 maxlength="2000" />
                                         </div>
                                         <div
@@ -143,43 +143,43 @@
                                             <x-admin.form-textarea id="about" name="about"
                                                 label="{{ __('About') }}"
                                                 placeholder="{{ __('Enter About Information') }}" data-translate="true"
-                                                value="{{ $doctor->getTranslation($code)->about }}" maxlength="2000"
+                                                value="{{ $doctor->getTranslation($code)?->about }}" maxlength="2000"
                                                 required="true" />
                                         </div>
 
                                         <div class="form-group col-md-12">
                                             <x-admin.form-editor id="address" name="address" data-translate="true"
-                                                label="{{ __('Address') }}" value="{!! $doctor->getTranslation($code)->address !!}"
+                                                label="{{ __('Address') }}" value="{!! $doctor->getTranslation($code)?->address !!}"
                                                 required="true" />
                                         </div>
                                         <div class="form-group col-md-12">
                                             <x-admin.form-editor id="educations" name="educations" data-translate="true"
-                                                label="{{ __('Educations') }}" value="{!! $doctor->getTranslation($code)->educations !!}"
+                                                label="{{ __('Educations') }}" value="{!! $doctor->getTranslation($code)?->educations !!}"
                                                 required="true" />
                                         </div>
                                         <div class="form-group col-md-12">
                                             <x-admin.form-editor id="experience" name="experience" data-translate="true"
-                                                label="{{ __('Experience') }}" value="{!! $doctor->getTranslation($code)->experience !!}"
+                                                label="{{ __('Experience') }}" value="{!! $doctor->getTranslation($code)?->experience !!}"
                                                 required="true" />
                                         </div>
                                         <div class="form-group col-md-12">
                                             <x-admin.form-editor id="qualifications" name="qualifications"
                                                 data-translate="true" label="{{ __('Qualifications') }}"
-                                                value="{!! $doctor->getTranslation($code)->qualifications !!}" required="true" />
+                                                value="{!! $doctor->getTranslation($code)?->qualifications !!}" required="true" />
                                         </div>
 
                                         <div class="form-group col-md-12">
                                             <x-admin.form-input id="seo_title" name="seo_title"
                                                 label="{{ __('SEO Title') }}" placeholder="{{ __('Enter SEO Title') }}"
                                                 data-translate="true"
-                                                value="{{ $doctor->getTranslation($code)->seo_title }}" />
+                                                value="{{ $doctor->getTranslation($code)?->seo_title }}" />
                                         </div>
 
                                         <div class="form-group col-md-12">
                                             <x-admin.form-textarea id="seo_description" name="seo_description"
                                                 label="{{ __('SEO Description') }}"
                                                 placeholder="{{ __('Enter SEO Description') }}" data-translate="true"
-                                                value="{{ $doctor->getTranslation($code)->seo_description }}"
+                                                value="{{ $doctor->getTranslation($code)?->seo_description }}"
                                                 maxlength="2000" />
                                         </div>
                                         <div

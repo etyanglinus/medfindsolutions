@@ -41,7 +41,7 @@
                         <div class="about1-bgimg mt_30"
                             style="background-image:url({{ $about?->background_image ? url($about?->background_image) : '' }});">
                             <div class="about1-inner">
-                                <img src="{{ url($about?->about_image) }}" alt="{{ __('About Us') }}" loading="lazy">
+                                @if($about?->about_image)<img src="{{ url($about->about_image) }}" alt="{{ __('About Us') }}" loading="lazy">@endif
                             </div>
                         </div>
                     </div>
@@ -60,7 +60,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-6 pt_30">
                             <div class="mission-img">
-                                <img src="{{ url($about?->mission_image) }}" alt="{{ __('About Us') }}" loading="lazy">
+                                @if($about?->mission_image)<img src="{{ url($about->mission_image) }}" alt="{{ __('About Us') }}" loading="lazy">@endif
                             </div>
                         </div>
                         <div class="col-md-6 pt_30">
@@ -83,7 +83,7 @@
                         </div>
                         <div class="col-md-6 pt_30">
                             <div class="mission-img vision-img">
-                                <img src="{{ url($about?->vision_image) }}" alt="{{ __('About Us') }}" loading="lazy">
+                                @if($about?->vision_image)<img src="{{ url($about->vision_image) }}" alt="{{ __('About Us') }}" loading="lazy">@endif
                             </div>
                         </div>
                     </div>

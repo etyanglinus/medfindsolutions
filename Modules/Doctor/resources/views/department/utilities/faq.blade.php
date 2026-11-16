@@ -69,8 +69,8 @@
                                             @forelse ($faqs as $faq)
                                                 <tr>
                                                     <td>{{ $loop->index + 1 }}</td>
-                                                    <td>{{ $faq->getTranslation($code)->question }}</td>
-                                                    <td>{{ $faq->getTranslation($code)->answer }}</td>
+                                                    <td>{{ $faq->getTranslation($code)?->question }}</td>
+                                                    <td>{{ $faq->getTranslation($code)?->answer }}</td>
                                                     <td>
                                                         <input onchange="changeStatus({{ $faq->id }})"
                                                             id="status_toggle" type="checkbox"
@@ -160,13 +160,13 @@
                                 <div class="form-group">
                                     <x-admin.form-input id="question" name="question" label="{{ __('Question') }}"
                                         placeholder="{{ __('Enter Question') }}"
-                                        value="{{ $faq->getTranslation($code)->question }}" required="true" />
+                                        value="{{ $faq->getTranslation($code)?->question }}" required="true" />
                                 </div>
 
                                 <div class="form-group">
                                     <x-admin.form-textarea id="answer" name="answer" label="{{ __('Answer') }}"
                                         placeholder="{{ __('Enter Answer') }}"
-                                        value="{{ $faq->getTranslation($code)->answer }}" maxlength="1000" required="true"/>
+                                        value="{{ $faq->getTranslation($code)?->answer }}" maxlength="1000" required="true"/>
                                 </div>
                         </div>
                     </div>

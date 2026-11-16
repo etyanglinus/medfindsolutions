@@ -1,13 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\LiveMeetingController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\SocialiteController;
-use App\Http\Controllers\Patient\MeetingController;
-use App\Http\Controllers\Patient\MessageController;
-use App\Http\Controllers\Patient\PaymentController;
-use App\Http\Controllers\Patient\ProfileController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -16,7 +11,6 @@ use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
-use Modules\BasicPayment\app\Http\Controllers\AddonPaymentController;
 
 Route::middleware(['guest:web', 'maintenance.mode', 'translation'])->group(function () {
     Route::get('provider/register', [RegisteredUserController::class, 'providerCreate'])->name('provider.register');
@@ -42,35 +36,9 @@ Route::middleware(['auth:web', 'translation', 'maintenance.mode'])->group(functi
     Route::put('password', [PasswordController::class, 'update'])->name('password.update');
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
-    Route::get('dashboard', [ProfileController::class, 'dashboard'])->name('dashboard');
+    // Patient accounts (appointments, orders, prescriptions, messaging) are not part of MedFind.
+    Route::get('dashboard', fn () => redirect()->route('home'))->name('dashboard');
     Route::post('resend-verification', [RegisteredUserController::class, 'resendVerification'])->name('verification.resend');
 
-    Route::group(['as' => 'patient.', 'prefix' => 'patient'], function () {
-        Route::controller(ProfileController::class)->group(function () {
-            Route::get('dashboard', fn() => to_route('dashboard'));
-            Route::post('update-profile', 'updateProfile')->name('update.profile');
-            Route::get('appointment', 'appointments')->name('appointment');
-            Route::get('show/{id}/appointment', 'showAppointment')->name('show.appointment');
-            Route::get('order', 'orders')->name('order');
-            Route::get('change-password', 'changePassword')->name('change.password');
-            Route::post('store-change-password', 'storePassword')->name('update.password');
-            Route::get('prescription/{id}', 'printPrescription')->name('print.prescription');
-        });
-
-        Route::controller(MessageController::class)->group(function () {
-            Route::get('message', 'index')->name('message');
-            Route::get('message-box/{slug}', 'messagebox')->name('message.box');
-            Route::get('get-message/{id}', 'getmessage')->name('get.message');
-            Route::get('seen-message/{id}', 'seenMessage')->name('seen.message');
-            Route::post('send-message', 'sendmessage')->name('send.message');
-        });
-
-        Route::controller(MeetingController::class)->group(function () {
-            Route::get('meeting-history', 'meetingHistory')->name('meeting-history');
-            Route::get('upcomming-meeting', 'upCommingMeeting')->name('upcomming-meeting');
-        });
-
-        Route::get('payment', [PaymentController::class,'payment'])->name('payment');
-    });
 
 });

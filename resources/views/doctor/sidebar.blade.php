@@ -46,36 +46,7 @@
 
       <li class="{{ isRoute('doctor.schedule', 'active') }}">
         <a class="nav-link" href="{{ route('doctor.schedule') }}">
-          <i class="fas fa-calendar-alt"></i><span>{{ __('My Schedule') }}</span>
-        </a>
-      </li>
-      <li class="{{ isRoute('doctor.today.appointment', 'active') }}">
-        <a class="nav-link" href="{{ route('doctor.today.appointment') }}">
-          <i class="fas fa-calendar-day"></i><span>{{ __("Today's Appointments") }}</span>
-        </a>
-      </li>
-      <li class="{{ isRoute('doctor.new.appointment', 'active') }}">
-        <a class="nav-link" href="{{ route('doctor.new.appointment') }}">
-          <i class="fas fa-calendar-plus"></i><span>{{ __('New Appointments') }}</span>
-        </a>
-      </li>
-      <li class="{{ isRoute('doctor.all.appointment', 'active') }}">
-        <a class="nav-link" href="{{ route('doctor.all.appointment') }}">
-          <i class="fas fa-list-alt"></i><span>{{ __('All Appointments') }}</span>
-        </a>
-      </li>
-
-      {{-- ── Telehealth (Zoom) ───────────────────────── --}}
-      <li class="menu-header">{{ __('Telehealth') }}</li>
-
-      <li class="{{ isRoute('doctor.zoom-meetings', 'active') }}">
-        <a class="nav-link" href="{{ route('doctor.zoom-meetings') }}">
-          <i class="fas fa-video"></i><span>{{ __('Zoom Meetings') }}</span>
-        </a>
-      </li>
-      <li class="{{ isRoute('doctor.zoom-credential', 'active') }}">
-        <a class="nav-link" href="{{ route('doctor.zoom-credential') }}">
-          <i class="fas fa-key"></i><span>{{ __('Zoom Credentials') }}</span>
+          <i class="fas fa-calendar-alt"></i><span>{{ __('Working Hours') }}</span>
         </a>
       </li>
 
@@ -89,11 +60,6 @@
         </a>
       </li>
       @endif
-      <li class="{{ isRoute('doctor.message.*', 'active') }}">
-        <a class="nav-link" href="{{ route('doctor.message.index') }}">
-          <i class="fas fa-comments"></i><span>{{ __('Messages') }}</span>
-        </a>
-      </li>
       <li class="{{ isRoute('doctor.admin-messages.*', 'active') }}">
         <a class="nav-link" href="{{ route('doctor.admin-messages.index') }}">
           <i class="fas fa-bell"></i><span>{{ __('Notifications') }}</span>

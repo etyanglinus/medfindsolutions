@@ -28,22 +28,22 @@ class Blog extends Model {
     }
 
     public function getTitleAttribute(): ?string {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
 
     public function getSortDescriptionAttribute(): ?string {
-        return $this->translation->sort_description;
+        return $this->translation?->sort_description;
     }
     public function getDescriptionAttribute(): ?string {
-        return $this->translation->description;
+        return $this->translation?->description;
     }
 
     public function getSeoTitleAttribute(): ?string {
-        return $this->translation->seo_title;
+        return $this->translation?->seo_title;
     }
 
     public function getSeoDescriptionAttribute(): ?string {
-        return $this->translation->seo_description;
+        return $this->translation?->seo_description;
     }
 
     public function category(): ?BelongsTo {

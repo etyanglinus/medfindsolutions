@@ -13,7 +13,7 @@ class WorkSection extends Model {
     protected $fillable = ['image', 'video', 'status'];
 
     public function getTitleAttribute(): ?string {
-        return $this->translation->title;
+        return $this->translation?->title;
     }
     public function translation(): ?HasOne {
         return $this->hasOne(WorkSectionTranslation::class)->where('lang_code', getSessionLanguage());

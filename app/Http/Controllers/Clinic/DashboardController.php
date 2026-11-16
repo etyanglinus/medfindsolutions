@@ -59,7 +59,7 @@ class DashboardController extends Controller {
     public function editProfile(): View {
         $clinic = $this->clinic();
         $subscription = app(SubscriptionAccessService::class)->activeClinicSubscription($clinic);
-        $services = Service::active()->get();
+        $services = Service::active();
         return view('clinic.edit-profile', compact('clinic', 'subscription', 'services'));
     }
 

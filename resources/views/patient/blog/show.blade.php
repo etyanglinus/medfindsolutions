@@ -40,7 +40,7 @@
                 <div class="col-lg-8">
                     <div class="blog-item">
                         <div class="single-blog-image">
-                            <img src="{{ url($blog?->image) }}" alt="{{ $blog?->title }}" loading="lazy">
+                            <img src="{{ url($blog?->image ?? "") }}" alt="{{ $blog?->title }}" loading="lazy">
                             <div class="blog-author">
                                 <span><i class="fas fa-user"></i> {{ $blog?->admin?->name ?? __('Admin') }}</span>
                                 <span><i class="far fa-calendar-alt"></i> {{ formattedDate($blog?->created_at) }}</span>

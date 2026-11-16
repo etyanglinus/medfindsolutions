@@ -14,7 +14,7 @@ class Location extends Model {
     protected $hidden = ['updated_at','created_at'];
 
     public function getNameAttribute(): ?string {
-        return $this->translation->name;
+        return $this->translation?->name;
     }
 
     public function translation(): ?HasOne {

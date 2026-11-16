@@ -11,7 +11,7 @@
         </div>
         <div class="form-group">
             <x-admin.form-editor data-translate="true" id="vision_description" name="vision_description" label="{{ __('Description') }}"
-                value="{!! $aboutus?->getTranslation($code)->vision_description !!}" required="true" />
+                value="{!! $aboutus?->getTranslation($code)?->vision_description !!}" required="true" />
         </div>
         <div class="form-group {{$code == $languages->first()->code ? '': 'd-none'}}">
             <x-admin.form-switch name="vision_status" label="{{ __('Status') }}" :checked="$aboutus?->vision_status == '1'" />

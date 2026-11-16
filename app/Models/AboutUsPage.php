@@ -21,14 +21,14 @@ class AboutUsPage extends Model {
     ];
 
     public function getAboutDescriptionAttribute(): ?string {
-        return $this->translation->about_description;
+        return $this->translation?->about_description;
     }
 
     public function getMissionDescriptionAttribute(): ?string {
-        return $this->translation->mission_description;
+        return $this->translation?->mission_description;
     }
     public function getVisionDescriptionAttribute(): ?string {
-        return $this->translation->vision_description;
+        return $this->translation?->vision_description;
     }
 
     public function translation(): ?HasOne {

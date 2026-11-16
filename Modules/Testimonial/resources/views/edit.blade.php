@@ -72,7 +72,7 @@
                                             <div class="form-group">
                                                 <x-admin.form-input id="name" name="name"
                                                     label="{{ __('Name') }}" placeholder="{{ __('Enter Name') }}"
-                                                    value="{{ old('name', $testimonial->getTranslation($code)->name) }}"
+                                                    value="{{ old('name', $testimonial->getTranslation($code)?->name) }}"
                                                     required="true" />
                                             </div>
                                         </div>
@@ -81,7 +81,7 @@
                                                 <x-admin.form-input id="designation" name="designation"
                                                     label="{{ __('Designation') }}"
                                                     placeholder="{{ __('Enter Designation') }}"
-                                                    value="{{ old('designation', $testimonial->getTranslation($code)->designation) }}"
+                                                    value="{{ old('designation', $testimonial->getTranslation($code)?->designation) }}"
                                                     required="true" />
                                             </div>
                                         </div>
@@ -89,7 +89,7 @@
                                             <div class="form-group">
                                                 <x-admin.form-textarea data-translate="true" id="comment" name="comment"
                                                     label="{{ __('Comment') }}" placeholder="{{ __('Enter Comment') }}"
-                                                    value="{{ old('comment', $testimonial->getTranslation($code)->comment) }}"
+                                                    value="{{ old('comment', $testimonial->getTranslation($code)?->comment) }}"
                                                     maxlength="5000" required="true" />
                                             </div>
                                         </div>

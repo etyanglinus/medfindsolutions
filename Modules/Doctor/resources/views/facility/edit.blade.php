@@ -86,13 +86,13 @@
                                                     label="{{ __('Licensing Body') }}" required="true">
                                                     <x-admin.select-option value="" text="{{ __('Select Licensing Body') }}" />
                                                     @foreach($licensingBodies as $body)
-                                                        <x-admin.select-option :selected="$body->name == $facility->getTranslation($code)->licensing_body" value="{{ $body->id }}" text="{{ $body->name }}" />
+                                                        <x-admin.select-option :selected="$body->name == $facility->getTranslation($code)?->licensing_body" value="{{ $body->id }}" text="{{ $body->name }}" />
                                                     @endforeach
                                                 </x-admin.form-select>
 
                                                 <label for="facility_insurance_provider_ids" class="form-label fw-semibold small text-secondary">{{ __('Insurance Providers') }}</label>
                                                 <select name="insurance_provider_ids[]" id="facility_insurance_provider_ids" class="form-select select2" multiple>
-                                                    @php $selectedInsurance = $facility->getTranslation($code)->accepted_insurance ? explode(', ', $facility->getTranslation($code)->accepted_insurance) : []; @endphp
+                                                    @php $selectedInsurance = $facility->getTranslation($code)?->accepted_insurance ? explode(', ', $facility->getTranslation($code)?->accepted_insurance) : []; @endphp
                                                     @foreach($insuranceProviders as $provider)
                                                         <option value="{{ $provider->id }}" @selected(in_array($provider->name, $selectedInsurance))>{{ $provider->name }}</option>
                                                     @endforeach
@@ -101,7 +101,7 @@
                                                 <x-admin.form-input id="licensing_body" name="licensing_body" data-translate="true"
                                                     label="{{ __('Licensing Body') }}"
                                                     placeholder="{{ __('Enter Licensing Body') }}"
-                                                    value="{{ $facility->getTranslation($code)->licensing_body }}"
+                                                    value="{{ $facility->getTranslation($code)?->licensing_body }}"
                                                     required="true" />
                                             @endif
                                         </div>
@@ -109,7 +109,7 @@
                                             <x-admin.form-textarea id="accepted_insurance" name="accepted_insurance" data-translate="true"
                                                 label="{{ __('Accepted Insurance') }}"
                                                 placeholder="{{ __('Enter Accepted Insurance') }}"
-                                                value="{{ $facility->getTranslation($code)->accepted_insurance }}"
+                                                value="{{ $facility->getTranslation($code)?->accepted_insurance }}"
                                                 maxlength="2000" />
                                         </div>
                                         <div class="form-group col-lg-4  col-md-6 {{ $code == $languages->first()->code ? '' : 'd-none' }}">
@@ -134,18 +134,18 @@
                                             <x-admin.form-textarea id="about" name="about" data-translate="true"
                                                 label="{{ __('About') }}"
                                                 placeholder="{{ __('Enter About Information') }}"
-                                                value="{{ $facility->getTranslation($code)->about }}" maxlength="2000"
+                                                value="{{ $facility->getTranslation($code)?->about }}" maxlength="2000"
                                                 required="true" />
                                         </div>
 
                                         <div class="form-group col-md-12">
                                             <x-admin.form-editor id="address" name="address" data-translate="true"
-                                                label="{{ __('Address') }}" value="{!! $facility->getTranslation($code)->address !!}"
+                                                label="{{ __('Address') }}" value="{!! $facility->getTranslation($code)?->address !!}"
                                                 required="true" />
                                         </div>
                                         <div class="form-group col-md-12">
                                             <x-admin.form-editor id="experience" name="experience" data-translate="true"
-                                                label="{{ __('Experience') }}" value="{!! $facility->getTranslation($code)->experience !!}"
+                                                label="{{ __('Experience') }}" value="{!! $facility->getTranslation($code)?->experience !!}"
                                                 required="true" />
                                         </div>
 
@@ -153,14 +153,14 @@
                                             <x-admin.form-input id="seo_title" name="seo_title"
                                                 label="{{ __('SEO Title') }}" placeholder="{{ __('Enter SEO Title') }}"
                                                 data-translate="true"
-                                                value="{{ $facility->getTranslation($code)->seo_title }}" />
+                                                value="{{ $facility->getTranslation($code)?->seo_title }}" />
                                         </div>
 
                                         <div class="form-group col-md-12">
                                             <x-admin.form-textarea id="seo_description" name="seo_description"
                                                 label="{{ __('SEO Description') }}"
                                                 placeholder="{{ __('Enter SEO Description') }}" data-translate="true"
-                                                value="{{ $facility->getTranslation($code)->seo_description }}"
+                                                value="{{ $facility->getTranslation($code)?->seo_description }}"
                                                 maxlength="2000" />
                                         </div>
                                         <div class="form-group col-md-12 {{ $code == $languages->first()->code ? '' : 'd-none' }}">
