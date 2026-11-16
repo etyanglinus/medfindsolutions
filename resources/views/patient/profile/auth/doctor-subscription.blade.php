@@ -39,17 +39,22 @@
                             </form>
                         </div>
                     @endif
-                    @if($subscription?->status === 'pending')
-                        <div class="alert alert-info rounded-3 d-flex gap-2 align-items-center">
-                            <i class="fas fa-hourglass-half"></i>
-                            {{ __('You already submitted a payment request for the') }}
-                            <strong>{{ $subscription->package_name }}</strong> {{ __('package. Please wait for admin approval.') }}
-                        </div>
-                    @elseif($subscription?->status === 'approved')
+                    @if($subscription?->status === 'approved' && $subscription->isActive())
                         <div class="alert alert-success rounded-3">
                             <i class="fas fa-check-circle me-2"></i>
-                            {{ __('Your payment is approved. Please log in to access your dashboard.') }}
-                            <a href="{{ route('login', ['type'=>'doctor']) }}" class="btn btn-sm btn-success ms-3">{{ __('Login') }}</a>
+                            {{ __('Your') }} <strong>{{ $subscription->package_name }}</strong> {{ __('plan is active until') }} {{ $subscription->expires_at?->format('d M Y') ?? __('further notice') }}.
+                            {{ __('You can renew or upgrade early below — the new period starts when the current one ends.') }}
+                        </div>
+                    @elseif($subscription?->status === 'approved')
+                        <div class="alert alert-warning rounded-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            {{ __('Your') }} <strong>{{ $subscription->package_name }}</strong> {{ __('plan expired on') }} {{ $subscription->expires_at?->format('d M Y') }}.
+                            {{ __('Choose a plan below and pay with Paystack to restore your listing.') }}
+                        </div>
+                    @elseif($subscription?->status === 'pending')
+                        <div class="alert alert-info rounded-3 d-flex gap-2 align-items-center">
+                            <i class="fas fa-hourglass-half"></i>
+                            <span>{{ __('An earlier payment for the') }} <strong>{{ $subscription->package_name }}</strong> {{ __('package is still awaiting confirmation. If you already paid, there is no need to pay again; otherwise pay below.') }}</span>
                         </div>
                     @elseif($subscription?->status === 'rejected')
                         <div class="alert alert-danger rounded-3">
@@ -59,7 +64,6 @@
                         </div>
                     @endif
 
-                    @if(!$subscription || $subscription->status === 'rejected')
                     <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
                         <div class="card-header bg-white border-0 pt-4 pb-3 px-4 px-sm-5 text-center">
                             <h4 class="fw-bold mb-1">{{ __('Choose Your Plan') }}</h4>
@@ -116,11 +120,6 @@
                             @include('provider.paystack-form', ['checkoutType' => 'doctor', 'checkoutToken' => $doctor->registration_token])
 </div>{{-- /card-body --}}
                     </div>{{-- /card --}}
-                    @else
-                        <div class="alert alert-secondary rounded-3">
-                            {{ __('A subscription request has already been submitted. Please wait for admin review.') }}
-                        </div>
-                    @endif
 
                     <div class="text-center mt-4">
                         <a href="{{ route('login', ['type' => 'doctor']) }}" class="btn btn-outline-secondary rounded-pill px-4">

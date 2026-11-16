@@ -62,12 +62,37 @@ class ProviderPaystackService
         $response = Http::withToken($this->secret())->timeout(30)->post('https://api.paystack.co/transaction/initialize', [
             'email' => data_get($payment->gateway_payload, 'expected_email') ?: ($payment->providerProfile->provider->email ?? $payment->providerProfile->provider->official_email),
             'amount' => (int) round((float) $payment->amount * 100), 'currency' => $payment->currency,
-            'reference' => $payment->gateway_reference, 'callback_url' => route('provider.paystack.callback'),
+            'reference' => $payment->gateway_reference,
+            // Where Paystack sends the provider after paying. This per-transaction value overrides the
+            // dashboard "Callback URL", so payments return to this site even if the dashboard is blank.
+            'callback_url' => self::callbackUrl(),
+            'metadata' => [
+                // Pressing "Cancel" on the Paystack page brings the provider back to their plan page.
+                'cancel_action' => self::callbackUrl(['reference' => $payment->gateway_reference, 'cancelled' => 1]),
+                'provider_type' => $payment->providerProfile?->provider_type,
+                'plan_code' => $payment->subscription?->plan_code,
+                'custom_fields' => array_values(array_filter([
+                    ['display_name' => 'Account type', 'variable_name' => 'provider_type', 'value' => (string) $payment->providerProfile?->provider_type],
+                    ['display_name' => 'Plan', 'variable_name' => 'plan', 'value' => (string) $payment->subscription?->package_name],
+                ], fn ($field) => $field['value'] !== '')),
+            ],
         ]);
         $url = $response->json('data.authorization_url');
         abort_unless($response->successful() && $response->json('status') === true && is_string($url) && parse_url($url, PHP_URL_SCHEME) === 'https' && parse_url($url, PHP_URL_HOST) === 'checkout.paystack.com', 502, __('Paystack checkout could not be started. Please try again.'));
         $payment->update(['gateway_payload' => array_merge($payment->gateway_payload ?? [], ['authorization_url' => $url, 'access_code' => $response->json('data.access_code')])]);
         return $url;
+    }
+
+    /** Public URL Paystack redirects the payer to after checkout. */
+    public static function callbackUrl(array $query = []): string
+    {
+        return route('provider.paystack.callback', $query);
+    }
+
+    /** Public URL Paystack POSTs signed events (charge.success) to. Set it as the dashboard "Webhook URL". */
+    public static function webhookUrl(): string
+    {
+        return route('api.provider-payments.paystack.webhook');
     }
 
     public function verify(string $reference): ProviderPaymentTransaction

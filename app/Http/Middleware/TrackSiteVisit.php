@@ -26,10 +26,14 @@ class TrackSiteVisit {
             return $response;
         }
 
-        SiteVisit::firstOrCreate([
+        // insertOrIgnore: a repeat or concurrent visit hits the unique index and is skipped,
+        // instead of throwing and breaking the page the provider is trying to open.
+        SiteVisit::query()->insertOrIgnore([
             'visited_on' => today()->toDateString(),
             'session_hash' => hash('sha256', $request->session()->getId()),
             'visitor_type' => $visitorType,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return $response;

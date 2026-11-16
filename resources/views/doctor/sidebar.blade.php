@@ -100,6 +100,15 @@
         </a>
       </li>
 
+      {{-- ── Subscription & Billing ──────────────────── --}}
+      <li class="menu-header">{{ __('Subscription') }}</li>
+
+      <li>
+        <a class="nav-link" href="{{ route('listing.doctor-plans') }}">
+          <i class="fas fa-credit-card"></i><span>{{ __('My Plan / Renew') }}</span>
+        </a>
+      </li>
+
       {{-- ── Account ─────────────────────────────────── --}}
       <li class="menu-header">{{ __('Account') }}</li>
 

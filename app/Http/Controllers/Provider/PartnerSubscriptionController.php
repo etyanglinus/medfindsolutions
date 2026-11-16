@@ -25,7 +25,13 @@ class PartnerSubscriptionController extends Controller
     abort_unless($secret && hash_equals(hash_hmac("sha512", $request->getContent(), $secret), $request->header("x-paystack-signature", "")), 401);
     if ($request->input("event") !== "charge.success") return response()->json(["ignored" => true]);
     $data = $request->validate(["data.reference" => ["required", "string"], "data.status" => ["required", Rule::in(["success"])], "data.amount" => ["required", "integer", "min:0"], "data.currency" => ["required", "string"], "data.customer.email" => ["required", "email"]])["data"];
-    $duplicate = app(\App\Services\ProviderPaystackService::class)->settle($data);
+    try {
+        $duplicate = app(\App\Services\ProviderPaystackService::class)->settle($data);
+    } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        // Amount/email/plan mismatch: keep the attempt pending and leave a trail for admin review.
+        \Illuminate\Support\Facades\Log::warning('Paystack webhook payment rejected', ['reference' => $data['reference'] ?? null, 'error' => $e->getMessage()]);
+        throw $e;
+    }
     return response()->json($duplicate === null ? ["ignored" => true] : ["success" => true, "duplicate" => $duplicate]);
 }
 
