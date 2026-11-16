@@ -110,6 +110,32 @@ class ProviderMonthlyReportTest extends TestCase
         $this->assertSame(0, DB::table('provider_monthly_reports')->count());
     }
 
+    public function test_unsubscribe_link_opt_out_is_respected_and_reversible(): void
+    {
+        $clinic = $this->clinic('optout', '2027-03-01');
+        $url = \App\Services\ProviderEmailPreferences::unsubscribeUrl('clinic', $clinic->id);
+
+        // Opening the link (as mail scanners do) changes nothing.
+        $this->get($url)->assertOk()->assertSee('Unsubscribe from the monthly report');
+        $this->assertTrue(app(\App\Services\ProviderEmailPreferences::class)->wantsMonthlyReport('clinic', $clinic->id));
+        $this->post(str_replace("/clinic/{$clinic->id}", '/clinic/999', $url), ['monthly_report' => '0'])->assertForbidden();
+
+        // One-click unsubscribe from the mail app (no CSRF token, RFC 8058 body).
+        $this->post($url, ['List-Unsubscribe' => 'One-Click'])->assertNoContent();
+        $this->artisan('providers:send-monthly-report')->expectsOutputToContain('1 unsubscribed')->assertSuccessful();
+        Mail::assertNothingSent();
+
+        $this->post($url, ['monthly_report' => '1'])->assertRedirect($url);
+        $this->get($url)->assertSee('Unsubscribe from the monthly report');
+        $this->artisan('providers:send-monthly-report')->assertSuccessful();
+        Mail::assertSent(ProviderMonthlyReport::class, function ($mail) use ($url) {
+            $mail->build();
+            $headers = new \Symfony\Component\Mime\Email();
+            foreach ($mail->callbacks as $callback) $callback($headers);
+            return $mail->unsubscribeUrl === $url && $headers->getHeaders()->get('List-Unsubscribe')?->getBodyAsString() === '<'.$url.'>';
+        });
+    }
+
     public function test_renew_link_opens_plan_page_and_tampered_link_is_refused(): void
     {
         $clinic = $this->clinic('renewer', '2026-12-08');

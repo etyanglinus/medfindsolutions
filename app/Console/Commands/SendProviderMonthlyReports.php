@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Mail\ProviderMonthlyReport;
+use App\Services\ProviderEmailPreferences;
 use App\Services\ProviderMonthlyReportService;
 use App\Services\ProviderRenewalLinks;
 use Carbon\CarbonImmutable;
@@ -35,11 +36,13 @@ class SendProviderMonthlyReports extends Command
         }
         $monthLabel = CarbonImmutable::createFromFormat('!Y-m', $period)->format('F Y');
         $limit = max(1, (int) $this->option('limit'));
-        $sent = $skipped = $failed = 0;
+        $sent = $skipped = $failed = $optedOut = 0;
+        $optOuts = app(ProviderEmailPreferences::class)->monthlyReportOptOuts();
 
         foreach ($reports->recipients() as $r) {
             if ($sent >= $limit) break;
             ['type' => $type, 'client' => $client] = $r;
+            if (isset($optOuts[$type.':'.$client->id])) { $optedOut++; continue; }
             $email = ProviderRenewalLinks::email($client);
             if (!$email) { $skipped++; continue; }
 
@@ -61,6 +64,7 @@ class SendProviderMonthlyReports extends Command
                 Mail::to($email)->send(new ProviderMonthlyReport(
                     $client->name, $monthLabel, $totals, $r['plan'], $expiresAt?->format('d M Y'),
                     $renewalDue, $expired, $links->url($type, $client), route('login', ['type' => $type]),
+                    ProviderEmailPreferences::unsubscribeUrl($type, $client->id),
                 ));
                 DB::table('provider_monthly_reports')->updateOrInsert(
                     ['provider_type' => $type, 'provider_id' => $client->id, 'period' => $period],
@@ -73,7 +77,7 @@ class SendProviderMonthlyReports extends Command
             }
         }
 
-        $this->info(sprintf('%s report for %s: %d %s, %d skipped, %d failed.', $this->option('dry-run') ? 'Dry run of' : 'Sent', $monthLabel, $sent, $this->option('dry-run') ? 'would be sent' : 'sent', $skipped, $failed));
+        $this->info(sprintf('%s report for %s: %d %s, %d skipped, %d unsubscribed, %d failed.', $this->option('dry-run') ? 'Dry run of' : 'Sent', $monthLabel, $sent, $this->option('dry-run') ? 'would be sent' : 'sent', $skipped, $optedOut, $failed));
         return self::SUCCESS;
     }
 }

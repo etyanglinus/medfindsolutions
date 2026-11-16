@@ -19,11 +19,19 @@ class ProviderMonthlyReport extends Mailable
         public bool $expired,
         public string $renewUrl,
         public string $dashboardUrl,
+        public ?string $unsubscribeUrl = null,
     ) {}
 
     public function build()
     {
         $views = number_format($this->totals['profile_view']['current'] ?? 0);
+        if ($this->unsubscribeUrl) {
+            $url = $this->unsubscribeUrl;
+            $this->withSymfonyMessage(function ($message) use ($url) {
+                $message->getHeaders()->addTextHeader('List-Unsubscribe', '<'.$url.'>');
+                $message->getHeaders()->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+            });
+        }
         return $this->subject(__('Your MedFind listing in :month: :views profile views', ['month' => $this->monthLabel, 'views' => $views]))
             ->view('emails.provider-monthly-report');
     }
