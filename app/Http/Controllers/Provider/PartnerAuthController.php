@@ -28,13 +28,15 @@ class PartnerAuthController extends Controller
     {
         $definition = $this->definition($type);
         $table = $type === 'school' ? 'healthcare_institutions' : 'medical_suppliers';
+        // Frees the email if an earlier sign-up with it was never paid/activated.
+        app(\App\Services\UnfinishedSignupService::class)->clearForRegistration($type, $request->input('email'));
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique($table, 'official_email')],
             'phone' => ['required', 'string', 'max:40'],
             'password' => ['required', 'confirmed', 'min:8', 'max:100'],
-        ]);
+        ], ['email.unique' => __('An account with this email already exists. Please log in, or use "Forgot password" if you cannot remember your password.')]);
 
         $record = DB::transaction(function () use ($validated, $definition, $type) {
             $model = $definition['model'];

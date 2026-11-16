@@ -16,9 +16,27 @@ class ListingInsightsService {
     }
 
     public function record(string $type, int $id, string $event): void {
-        if (!in_array($event, self::EVENTS, true) || Auth::guard('admin')->check() || Auth::guard($type)->id() === $id) return;
-        ListingEvent::firstOrCreate(['provider_type' => $type, 'provider_id' => $id, 'event' => $event,
-            'day' => now()->toDateString(), 'visitor' => hash_hmac('sha256', request()->session()->getId(), config('app.key'))]);
+        $this->recordMany($type, [$id], $event);
+    }
+
+    /**
+     * Records one event per provider for today's visitor in a single query. The unique index
+     * (type, provider, event, day, visitor) skips repeats, so a directory page with many listings
+     * costs one query instead of two per listing.
+     */
+    public function recordMany(string $type, iterable $ids, string $event): void {
+        if (!in_array($event, self::EVENTS, true) || Auth::guard('admin')->check()) return;
+        $self = Auth::guard($type)->id();
+        $day = now()->toDateString();
+        $visitor = hash_hmac('sha256', request()->session()->getId(), config('app.key'));
+        $now = now();
+        $rows = [];
+        foreach ($ids as $id) {
+            $id = (int) $id;
+            if ($id <= 0 || $id === $self) continue;
+            $rows[$id] = ['provider_type' => $type, 'provider_id' => $id, 'event' => $event, 'day' => $day, 'visitor' => $visitor, 'created_at' => $now, 'updated_at' => $now];
+        }
+        if ($rows) ListingEvent::query()->insertOrIgnore(array_values($rows));
     }
 
     public function inquiries(string $type, $client) {

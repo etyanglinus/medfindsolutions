@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Cache;
 use App\Models\FaqPage;
 use App\Models\AboutUsPage;
 use Illuminate\Http\Request;
@@ -105,139 +106,149 @@ class HomeController extends Controller {
         // ─────────────────────────────────────────────────────────────
         $rotationSeed = (int) floor(time() / 300);
 
-        // ============================================
-        // Get prioritized + rotating doctors
-        // ============================================
-        $doctors = Doctor::select('id', 'department_id', 'location_id', 'slug', 'name', 'image')
-            ->with([
-                'translation' => function ($query) {
-                    $query->select('doctor_id', 'designations');
-                },
-                'department' => function ($query) {
-                    $query->select('id');
-                },
-                'department.translation' => function ($query) {
-                    $query->select('department_id', 'name');
-                },
-                'location' => function ($query) {
-                    $query->select('id');
-                },
-                'location.translation' => function ($query) {
-                    $query->select('location_id', 'name');
-                },
-                'socialMedia' => function ($query) {
-                    $query->select('doctor_id', 'link', 'icon')->active();
-                },
-                'subscriptions' => function ($query) {
-                    $query->where('status', 'approved')
-                        ->whereNotNull('approved_at')
-                        ->where('approved_at', '<=', now())
-                        ->where(function ($q) {
-                            $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                        });
-                }
-            ])
-            ->active()
-            ->get()
-            ->map(function ($doctor) {
-                $priority = 0;
-                foreach ($doctor->subscriptions as $subscription) {
-                    // Plan-name tier
-                    $planCode = strtolower($subscription->plan_code ?? $subscription->plan ?? '');
-                    if (str_contains($planCode, 'executive')) {
-                        $priority = max($priority, 300);
-                    } elseif (str_contains($planCode, 'premium') || str_contains($planCode, 'platinum')) {
-                        $priority = max($priority, 200);
-                    } elseif (str_contains($planCode, 'basic')) {
-                        $priority = max($priority, 100);
-                    } elseif ($planCode) {
-                        $priority = max($priority, 50);
-                    }
-                    // Entitlement bonuses (stacked on top of tier)
-                    if ($subscription->hasEntitlement('homepage_rotation'))  $priority += 50;
-                    if ($subscription->hasEntitlement('top_specialist_badge') || $subscription->hasEntitlement('top_doctor_badge')) $priority += 30;
-                    if ($subscription->hasEntitlement('verified_badge'))      $priority += 10;
-                    if ($subscription->hasEntitlement('search_visibility'))   $priority += 5;
-                }
-                $doctor->_priority = $priority;
-                return $doctor;
-            })
-            // Rotate within each priority tier using the 5-minute seed
-            ->sortByDesc(fn ($d) => $d->_priority * 1_000_000 + crc32($rotationSeed . ':doctor:' . $d->id) % 1_000_000)
-            ->values()
-            ->take(6);
+        // The featured lists only change when the rotation seed does (every 5 minutes), so build them
+        // once per window and language instead of loading every provider on every homepage visit.
+        [$doctors, $featuredClinics, $featuredMedicalSuppliers, $featuredSupplierProducts] = Cache::remember(
+            'home.featured.'.$rotationSeed.'.'.app()->getLocale().'.'.(function_exists('getSessionLanguage') ? getSessionLanguage() : ''),
+            300,
+            function () use ($rotationSeed) {
+                // ============================================
+                // Get prioritized + rotating doctors
+                // ============================================
+                $doctors = Doctor::select('id', 'department_id', 'location_id', 'slug', 'name', 'image')
+                    ->with([
+                        'translation' => function ($query) {
+                            $query->select('doctor_id', 'designations');
+                        },
+                        'department' => function ($query) {
+                            $query->select('id');
+                        },
+                        'department.translation' => function ($query) {
+                            $query->select('department_id', 'name');
+                        },
+                        'location' => function ($query) {
+                            $query->select('id');
+                        },
+                        'location.translation' => function ($query) {
+                            $query->select('location_id', 'name');
+                        },
+                        'socialMedia' => function ($query) {
+                            $query->select('doctor_id', 'link', 'icon')->active();
+                        },
+                        'subscriptions' => function ($query) {
+                            $query->where('status', 'approved')
+                                ->whereNotNull('approved_at')
+                                ->where('approved_at', '<=', now())
+                                ->where(function ($q) {
+                                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                                });
+                        }
+                    ])
+                    ->active()
+                    ->get()
+                    ->map(function ($doctor) {
+                        $priority = 0;
+                        foreach ($doctor->subscriptions as $subscription) {
+                            // Plan-name tier
+                            $planCode = strtolower($subscription->plan_code ?? $subscription->plan ?? '');
+                            if (str_contains($planCode, 'executive')) {
+                                $priority = max($priority, 300);
+                            } elseif (str_contains($planCode, 'premium') || str_contains($planCode, 'platinum')) {
+                                $priority = max($priority, 200);
+                            } elseif (str_contains($planCode, 'basic')) {
+                                $priority = max($priority, 100);
+                            } elseif ($planCode) {
+                                $priority = max($priority, 50);
+                            }
+                            // Entitlement bonuses (stacked on top of tier)
+                            if ($subscription->hasEntitlement('homepage_rotation'))  $priority += 50;
+                            if ($subscription->hasEntitlement('top_specialist_badge') || $subscription->hasEntitlement('top_doctor_badge')) $priority += 30;
+                            if ($subscription->hasEntitlement('verified_badge'))      $priority += 10;
+                            if ($subscription->hasEntitlement('search_visibility'))   $priority += 5;
+                        }
+                        $doctor->_priority = $priority;
+                        return $doctor;
+                    })
+                    // Rotate within each priority tier using the 5-minute seed
+                    ->sortByDesc(fn ($d) => $d->_priority * 1_000_000 + crc32($rotationSeed . ':doctor:' . $d->id) % 1_000_000)
+                    ->values()
+                    ->take(6);
 
-        // ============================================
-        // Get prioritized + rotating clinics
-        // ============================================
-        $featuredClinics = Clinic::select('id', 'slug', 'name', 'specialty', 'logo', 'location')
-            ->with([
-                'subscriptions' => function ($query) {
-                    $query->where('status', 'approved')
-                        ->whereNotNull('approved_at')
-                        ->where('approved_at', '<=', now())
-                        ->where(function ($q) {
-                            $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                        });
-                }
-            ])
-            ->active()
-            ->get()
-            ->map(function ($clinic) {
-                $priority = 0;
-                foreach ($clinic->subscriptions as $subscription) {
-                    $planCode = strtolower($subscription->plan_code ?? $subscription->plan ?? '');
-                    if (str_contains($planCode, 'executive'))               $priority = max($priority, 300);
-                    elseif (str_contains($planCode, 'premium'))             $priority = max($priority, 200);
-                    elseif (str_contains($planCode, 'basic'))               $priority = max($priority, 100);
-                    elseif ($planCode)                                       $priority = max($priority, 50);
-                    if ($subscription->hasEntitlement('top_clinic_badge'))  $priority += 50;
-                    if ($subscription->hasEntitlement('homepage_rotation')) $priority += 30;
-                    if ($subscription->hasEntitlement('search_visibility')) $priority += 5;
-                }
-                $clinic->_priority = $priority;
-                return $clinic;
-            })
-            ->sortByDesc(fn ($c) => $c->_priority * 1_000_000 + crc32($rotationSeed . ':clinic:' . $c->id) % 1_000_000)
-            ->values()
-            ->take(6);
+                // ============================================
+                // Get prioritized + rotating clinics
+                // ============================================
+                $featuredClinics = Clinic::select('id', 'slug', 'name', 'specialty', 'logo', 'location')
+                    ->with([
+                        'subscriptions' => function ($query) {
+                            $query->where('status', 'approved')
+                                ->whereNotNull('approved_at')
+                                ->where('approved_at', '<=', now())
+                                ->where(function ($q) {
+                                    $q->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                                });
+                        }
+                    ])
+                    ->active()
+                    ->get()
+                    ->map(function ($clinic) {
+                        $priority = 0;
+                        foreach ($clinic->subscriptions as $subscription) {
+                            $planCode = strtolower($subscription->plan_code ?? $subscription->plan ?? '');
+                            if (str_contains($planCode, 'executive'))               $priority = max($priority, 300);
+                            elseif (str_contains($planCode, 'premium'))             $priority = max($priority, 200);
+                            elseif (str_contains($planCode, 'basic'))               $priority = max($priority, 100);
+                            elseif ($planCode)                                       $priority = max($priority, 50);
+                            if ($subscription->hasEntitlement('top_clinic_badge'))  $priority += 50;
+                            if ($subscription->hasEntitlement('homepage_rotation')) $priority += 30;
+                            if ($subscription->hasEntitlement('search_visibility')) $priority += 5;
+                        }
+                        $clinic->_priority = $priority;
+                        return $clinic;
+                    })
+                    ->sortByDesc(fn ($c) => $c->_priority * 1_000_000 + crc32($rotationSeed . ':clinic:' . $c->id) % 1_000_000)
+                    ->values()
+                    ->take(6);
 
-        $partnerPortal = app(PartnerPortalService::class);
-        $activeSupplierProfiles = ProviderProfile::query()->where('provider_type', ProviderProfile::TYPE_SUPPLIER)
-            ->where('status', ProviderProfile::STATUS_PUBLISHED)->whereNotNull('published_at')
-            ->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')->where(fn ($s) => $s->whereNull('starts_at')->orWhere('starts_at', '<=', now()))->where(fn ($s) => $s->whereNull('expires_at')->orWhere('expires_at', '>', now())))
-            ->with('subscriptions')->get()
-            ->filter(fn ($profile) => $partnerPortal->allows($profile, 'search_visibility') && $partnerPortal->allows($profile, 'supplier_profile'));
-        $supplierIds = $activeSupplierProfiles->pluck('provider_id');
+                $partnerPortal = app(PartnerPortalService::class);
+                $activeSupplierProfiles = ProviderProfile::query()->where('provider_type', ProviderProfile::TYPE_SUPPLIER)
+                    ->where('status', ProviderProfile::STATUS_PUBLISHED)->whereNotNull('published_at')
+                    ->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')->where(fn ($s) => $s->whereNull('starts_at')->orWhere('starts_at', '<=', now()))->where(fn ($s) => $s->whereNull('expires_at')->orWhere('expires_at', '>', now())))
+                    ->with('subscriptions')->get()
+                    ->filter(fn ($profile) => $partnerPortal->allows($profile, 'search_visibility') && $partnerPortal->allows($profile, 'supplier_profile'));
+                $supplierIds = $activeSupplierProfiles->pluck('provider_id');
 
-        // ============================================
-        // Get prioritized + rotating suppliers
-        // ============================================
-        $featuredMedicalSuppliers = MedicalSupplier::query()->whereIn('id', $supplierIds)->with(['providerProfile.subscriptions', 'categories'])
-            ->latest()->get()->map(function ($supplier) use ($partnerPortal) {
-                $entitlements = $supplier->providerProfile ? $partnerPortal->entitlements($supplier->providerProfile) : [];
-                $supplier->public_entitlements = $entitlements;
-                // Priority: featured_supplier > homepage_rotation; others not shown
-                if (! empty($entitlements['featured_supplier'])) {
-                    $supplier->_priority = 200;
-                } elseif (! empty($entitlements['homepage_rotation'])) {
-                    $supplier->_priority = 100;
-                } else {
-                    $supplier->_priority = 0;
-                }
-                return $supplier;
-            })
-            ->filter(fn ($s) => $s->_priority > 0)
-            ->sortByDesc(fn ($s) => $s->_priority * 1_000_000 + crc32($rotationSeed . ':supplier:' . $s->id) % 1_000_000)
-            ->take(6)->values();
-        $featuredSupplierProducts = SupplierProduct::query()->where('approval_status', 'approved')->where('is_published', true)->where('is_featured', true)
-            ->whereHas('supplier', fn ($q) => $q->whereIn('id', $supplierIds))
-            ->with(['supplier.providerProfile.subscriptions'])->latest()->get()
-            ->map(function ($product) use ($partnerPortal) {
-                $product->supplier->public_entitlements = $product->supplier->providerProfile ? $partnerPortal->entitlements($product->supplier->providerProfile) : [];
-                return $product;
-            })->filter(fn ($product) => $product->supplier?->providerProfile && $partnerPortal->allows($product->supplier->providerProfile, 'featured_products'))
-            ->take(6)->values();
+                // ============================================
+                // Get prioritized + rotating suppliers
+                // ============================================
+                $featuredMedicalSuppliers = MedicalSupplier::query()->whereIn('id', $supplierIds)->with(['providerProfile.subscriptions', 'categories'])
+                    ->latest()->get()->map(function ($supplier) use ($partnerPortal) {
+                        $entitlements = $supplier->providerProfile ? $partnerPortal->entitlements($supplier->providerProfile) : [];
+                        $supplier->public_entitlements = $entitlements;
+                        // Priority: featured_supplier > homepage_rotation; others not shown
+                        if (! empty($entitlements['featured_supplier'])) {
+                            $supplier->_priority = 200;
+                        } elseif (! empty($entitlements['homepage_rotation'])) {
+                            $supplier->_priority = 100;
+                        } else {
+                            $supplier->_priority = 0;
+                        }
+                        return $supplier;
+                    })
+                    ->filter(fn ($s) => $s->_priority > 0)
+                    ->sortByDesc(fn ($s) => $s->_priority * 1_000_000 + crc32($rotationSeed . ':supplier:' . $s->id) % 1_000_000)
+                    ->take(6)->values();
+                $featuredSupplierProducts = SupplierProduct::query()->where('approval_status', 'approved')->where('is_published', true)->where('is_featured', true)
+                    ->whereHas('supplier', fn ($q) => $q->whereIn('id', $supplierIds))
+                    ->with(['supplier.providerProfile.subscriptions'])->latest()->get()
+                    ->map(function ($product) use ($partnerPortal) {
+                        $product->supplier->public_entitlements = $product->supplier->providerProfile ? $partnerPortal->entitlements($product->supplier->providerProfile) : [];
+                        return $product;
+                    })->filter(fn ($product) => $product->supplier?->providerProfile && $partnerPortal->allows($product->supplier->providerProfile, 'featured_products'))
+                    ->take(6)->values();
+
+                return [$doctors, $featuredClinics, $featuredMedicalSuppliers, $featuredSupplierProducts];
+            }
+        );
 
         $feature_blog = Blog::select('id','admin_id', 'slug', 'image', 'created_at')->with([
             'admin' => function ($query) {

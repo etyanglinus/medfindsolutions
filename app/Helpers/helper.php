@@ -582,8 +582,9 @@ if (!function_exists('doctorAuth')) {
 }
 if (!function_exists('customCode')) {
     function customCode() {
+        // Cache "no custom code" as false too; caching null made every page re-query this 4 times.
         return Cache::rememberForever('customCode', function () {
-            return CustomCode::select('css', 'header_javascript', 'body_javascript', 'footer_javascript')->first();
-        });
+            return CustomCode::select('css', 'header_javascript', 'body_javascript', 'footer_javascript')->first() ?? false;
+        }) ?: null;
     }
 }
