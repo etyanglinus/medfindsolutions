@@ -46,6 +46,7 @@ restore_env() { cp -a "$ENV_BACKUP" .env; }
 on_error() {
   local line="$1"
   echo "!! Deploy failed at line $line — rolling code back to $PREVIOUS" >&2
+  rm -f "$STATE_DIR/db-client.cnf"
   restore_env
   # --keep moves back but refuses to throw away any file edited directly on the server.
   git reset --keep "$PREVIOUS" || echo "!! Automatic rollback refused; check 'git status' in $APP_DIR" >&2
@@ -70,6 +71,11 @@ fi
 
 "$PHP" artisan down --retry=15 && WENT_DOWN=1
 
+# Tracked files under storage/ and bootstrap/cache/ are only placeholders (.gitignore) and old
+# scripts. Copying a live storage/ folder over a fresh clone marks them as changed, which makes
+# git refuse to update. Real data there is untracked and never touched by this.
+git checkout -- storage bootstrap/cache 2>/dev/null || true
+
 # .env used to be tracked in git. Undo local edits to the tracked copy so git can update or
 # remove it, then always put the live copy back afterwards.
 if git ls-files --error-unmatch .env >/dev/null 2>&1; then git checkout -- .env; fi
@@ -84,11 +90,10 @@ restore_env
 # Back up the database before schema changes.
 if "$PHP" artisan migrate:status --no-ansi 2>/dev/null | grep -q "Pending"; then
   echo "==> New migrations found — backing up the database first"
-  env_val() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | sed -E 's/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/'; }
-  CNF="$(mktemp)"; chmod 600 "$CNF"
-  printf '[client]\nhost=%s\nport=%s\nuser=%s\npassword="%s"\n' "$(env_val DB_HOST)" "$(env_val DB_PORT)" "$(env_val DB_USERNAME)" "$(env_val DB_PASSWORD)" > "$CNF"
-  DUMP="$BACKUP_DIR/$(env_val DB_DATABASE)-$(date +%Y%m%d-%H%M%S)-before-$(git rev-parse --short HEAD).sql.gz"
-  mysqldump --defaults-extra-file="$CNF" --single-transaction --routines --no-tablespaces "$(env_val DB_DATABASE)" | gzip > "$DUMP"
+  CNF="$STATE_DIR/db-client.cnf"; : > "$CNF"; chmod 600 "$CNF"
+  DB_NAME="$("$PHP" scripts/db-client-config.php "$CNF")"
+  DUMP="$BACKUP_DIR/${DB_NAME}-$(date +%Y%m%d-%H%M%S)-before-$(git rev-parse --short HEAD).sql.gz"
+  mysqldump --defaults-extra-file="$CNF" --single-transaction --routines --no-tablespaces "$DB_NAME" | gzip > "$DUMP"
   rm -f "$CNF"
   chmod 600 "$DUMP"
   echo "    saved $DUMP"
