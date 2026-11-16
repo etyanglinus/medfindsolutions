@@ -4,6 +4,9 @@
 \Illuminate\Support\Facades\Route::get('listing-performance/{type}', [\App\Http\Controllers\ListingInsightsController::class, 'report'])->name('listing.report');
 \Illuminate\Support\Facades\Route::patch('listing-inquiries/{type}/{inquiry}', [\App\Http\Controllers\ProviderInboxController::class, 'update'])->name('listing.inquiries.update');
 \Illuminate\Support\Facades\Route::get('listing-inbox/{type}', [\App\Http\Controllers\ListingInsightsController::class, 'inquiries'])->name('listing.inbox');
+\Illuminate\Support\Facades\Route::get('listing-receipts/{type}', [\App\Http\Controllers\ProviderReceiptController::class, 'index'])->whereIn('type', ['doctor','clinic','school','supplier'])->name('listing.receipts');
+\Illuminate\Support\Facades\Route::get('listing-receipts/{type}/{transaction}', [\App\Http\Controllers\ProviderReceiptController::class, 'download'])->whereIn('type', ['doctor','clinic','school','supplier'])->whereNumber('transaction')->name('listing.receipts.download');
+\Illuminate\Support\Facades\Route::get('provider/receipt/{transaction}', [\App\Http\Controllers\ProviderReceiptController::class, 'signed'])->whereNumber('transaction')->middleware(['signed', 'throttle:30,1'])->name('provider.receipt.signed');
 \Illuminate\Support\Facades\Route::get('listing-plans/doctor', [\App\Http\Controllers\ListingInsightsController::class, 'doctorPlans'])->name('listing.doctor-plans');
 \Illuminate\Support\Facades\Route::patch('listing-inbox/{type}/{inquiry}', [\App\Http\Controllers\ListingInsightsController::class, 'updateInquiry'])->name('listing.inbox.update');
 // Short commit id of the code that is live, written by scripts/deploy.sh. The CI/CD pipeline polls this

@@ -57,6 +57,7 @@ class SendProviderPaymentConfirmation implements ShouldQueue
                     $client->name, $email, (string) $subscription->package_name,
                     $payment->currency.' '.number_format((float) $payment->amount, 2),
                     $subscription->expires_at?->format('d M Y'), $payment->gateway_reference, $accessUrl,
+                    \App\Services\PaymentReceipt::signedUrl($payment),
                 ));
 
                 $subscription->update(['metadata' => array_merge($subscription->metadata ?? [], ['confirmation_email_sent_at' => now()->toIso8601String()])]);
