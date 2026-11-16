@@ -91,6 +91,24 @@ class PaystackCheckoutController extends Controller
         return redirect()->route('login', ['type' => $type])->with(['message' => __('Payment confirmed by Paystack. Log in to complete your profile and upload your verification documents.'), 'alert-type' => 'success']);
     }
 
+    /**
+     * Signed link from the "payment received" email. Opening it proves the provider controls the
+     * inbox, so the email address is marked verified (schools/suppliers cannot log in otherwise),
+     * then the provider is sent to the login page for their account type.
+     */
+    public function access(string $type, int $id)
+    {
+        $client = ProviderPaystackService::model($type)::findOrFail($id);
+        if (!$client->email_verified_at) {
+            $client->forceFill(['email_verified_at' => now(), 'email_verified_token' => null])->save();
+        }
+        $email = $client->email ?? $client->official_email;
+        return redirect()->route('login', ['type' => $type])->withInput(['email' => $email])->with([
+            'message' => __('Your email is confirmed and your account is active. Log in with the password you chose at registration.'),
+            'alert-type' => 'success',
+        ]);
+    }
+
     public function retry(ProviderPaymentTransaction $transaction)
     {
         checkAdminHasPermissionAndThrowException('client.payment.view');

@@ -7,6 +7,7 @@
 \Illuminate\Support\Facades\Route::get('listing-plans/doctor', [\App\Http\Controllers\ListingInsightsController::class, 'doctorPlans'])->name('listing.doctor-plans');
 \Illuminate\Support\Facades\Route::patch('listing-inbox/{type}/{inquiry}', [\App\Http\Controllers\ListingInsightsController::class, 'updateInquiry'])->name('listing.inbox.update');
 \Illuminate\Support\Facades\Route::get('provider/paystack/callback', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'callback'])->name('provider.paystack.callback')->middleware('throttle:30,1');
+\Illuminate\Support\Facades\Route::get('provider/{type}/payment-access/{id}', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'access'])->whereIn('type', ['doctor','clinic','school','supplier'])->whereNumber('id')->middleware(['signed', 'throttle:30,1'])->name('provider.payment-access');
 \Illuminate\Support\Facades\Route::post('provider/{type}/checkout/{token}', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'start'])->whereIn('type', ['doctor','clinic','school','supplier'])->name('provider.paystack.start')->middleware('throttle:10,1');
 \Illuminate\Support\Facades\Route::post('provider/{type}/renew', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'renew'])->whereIn('type', ['doctor','clinic','school','supplier'])->name('provider.paystack.renew')->middleware('throttle:10,1');
 

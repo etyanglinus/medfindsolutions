@@ -31,6 +31,13 @@ class ReconcilePaystackPayments extends Command
             $checked++;
         }
         $this->info("Checked {$checked} payment(s).");
+
+        // Retry "payment received" emails that could not be sent (e.g. mail server was down).
+        $resent = 0;
+        ProviderPaymentTransaction::with('subscription')->where('status', 'paid')->where('paid_at', '>=', now()->subDays((int) $this->option('days')))
+            ->get()->filter(fn ($payment) => \App\Jobs\SendProviderPaymentConfirmation::shouldSend($payment))
+            ->each(function ($payment) use (&$resent) { (new \App\Jobs\SendProviderPaymentConfirmation($payment->id))->handle(); $resent++; });
+        if ($resent) $this->info("Retried {$resent} confirmation email(s).");
         return self::SUCCESS;
     }
 }
