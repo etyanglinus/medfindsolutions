@@ -64,6 +64,7 @@ Route::group(['middleware'=>'translation', 'as' => 'admin.', 'prefix' => 'admin'
         Route::post('supplier-categories', [SupplierCategoryController::class, 'store'])->name('supplier-categories.store');
         Route::put('supplier-categories/{category}', [SupplierCategoryController::class, 'update'])->name('supplier-categories.update');
         Route::get('supplier-listings', [SupplierListingReviewController::class, 'index'])->name('supplier-listings.index');
+        Route::put('listing-verification', [\App\Http\Controllers\Admin\ListingVerificationController::class, 'update'])->name('listing-verification.update');
         Route::post('maintenance/start', [\App\Http\Controllers\Admin\MaintenanceController::class, 'start'])->name('maintenance.start');
         Route::post('maintenance/stop', [\App\Http\Controllers\Admin\MaintenanceController::class, 'stop'])->name('maintenance.stop');
         Route::get('school-courses', [\App\Http\Controllers\Admin\SchoolCourseReviewController::class, 'index'])->name('school-courses.index');
