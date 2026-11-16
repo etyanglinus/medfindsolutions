@@ -70,6 +70,9 @@
           @else
             <span class="plan-pill no-plan"><i class="fas fa-exclamation-circle"></i> {{ __('No active plan') }}</span>
           @endif
+          <a href="{{ route('listing.doctor-plans') }}" class="btn btn-sm btn-primary rounded-pill ms-2">
+            <i class="fas fa-sync-alt me-1"></i>{{ $subscription?->isActive() ? __('Renew / Upgrade') : __('Choose a plan & pay') }}
+          </a>
         </div>
       </div>
 

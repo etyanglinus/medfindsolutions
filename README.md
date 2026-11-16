@@ -460,25 +460,44 @@ echo 'Done';
 
 ## 9. Paystack Integration
 
-Paystack is integrated for **doctor subscription payments**. When a doctor registers and selects a plan, they can pay instantly via Paystack (card / M-Pesa / bank) or submit a bank transfer for manual admin review.
+All four provider types — **specialists (doctors), facilities (clinics), medical suppliers and healthcare schools** — pay for their subscription through Paystack hosted checkout (card / M-Pesa / bank). Bank-transfer and other gateways are retired.
 
 ### How it works
 
 ```
-Doctor registers → selects plan → subscription page
-  ├── Pay with Paystack (Paystack popup)
-  │     ↓ payment succeeds
-  │     POST /doctor/complete-registration/{token}/paystack
-  │     Server calls Paystack API to verify reference
-  │     Subscription saved with status = "approved" immediately
-  │     Doctor redirected to login — no admin approval needed
-  │
-  └── Bank / M-Pesa transfer
-        Doctor fills in transaction code
-        POST /doctor/complete-registration/{token}
-        Subscription saved with status = "pending"
-        Admin reviews and approves in Admin → Subscriptions → Doctors
+Provider registers → plan page → "Continue to Paystack"
+  POST /provider/{type}/checkout/{token}     (new sign-ups)
+  POST /provider/{type}/renew                (signed-in renewals)
+    ↓ server creates a pending subscription + payment attempt and redirects to checkout.paystack.com
+Provider pays on Paystack
+  ├── Browser returns to  GET  /provider/paystack/callback?reference=...   (callback URL)
+  │     server verifies the reference with Paystack, activates the plan,
+  │     redirects to the portal (or login) with a success message
+  ├── Paystack also sends POST /api/provider-payments/paystack/webhook   (webhook URL)
+  │     signed with your secret key; activates the plan even if the browser was closed
+  └── "Cancel" on Paystack returns to the provider's plan page
 ```
+
+Payment never publishes a listing by itself: admin still approves the profile and documents.
+
+Where providers find the pay/renew page after sign-up:
+
+| Provider | Link |
+|---|---|
+| Specialist | Sidebar → **My Plan / Renew** or the dashboard button (`/listing-plans/doctor`) |
+| Facility | Sidebar → **Subscription** (`/clinic/subscription`) |
+| School / Supplier | Sidebar → **Subscription / renew** (`/partner/{type}/subscription`) |
+
+### Paystack dashboard setup (required)
+
+In the Paystack dashboard → **Settings → API Keys & Webhooks**, set:
+
+| Field | Value |
+|---|---|
+| Callback URL | `https://YOUR-DOMAIN/provider/paystack/callback` |
+| Webhook URL | `https://YOUR-DOMAIN/api/provider-payments/paystack/webhook` |
+
+The exact URLs for your site, with copy buttons, are shown in **Admin → Settings → Payment Gateway → Paystack**. Set them for both Test and Live mode. `APP_URL` in `.env` must be your public https domain.
 
 ### Paystack test keys (seeded by default)
 
@@ -490,9 +509,10 @@ Currency:    KES
 
 ### Switching to live keys
 
-Admin → Settings → Payment Settings → Paystack
+Admin → Settings → Payment Gateway → Paystack
 - Enter your live public and secret keys from the Paystack dashboard.
 - Set status to **Active**.
+- Make sure the Live callback and webhook URLs above are saved in the Paystack dashboard.
 
 ---
 

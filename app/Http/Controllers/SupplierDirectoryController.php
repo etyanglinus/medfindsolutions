@@ -40,8 +40,8 @@ class SupplierDirectoryController extends Controller
             ->when($county, fn ($q) => $q->whereIn('provider_profile_id', $countyProfileIds)->whereJsonContains('counties_served', $county))
             ->when($brand !== '', fn ($q) => $q->whereIn('provider_profile_id', $brandProfileIds)->where(fn ($w) => $w->whereJsonContains('brands', $brand)->orWhereHas('products', fn ($p) => $p->where('brand', $brand)->where('approval_status', 'approved')->where('is_published', true))))
             ->when($supplierType !== '', fn ($q) => $q->whereIn('provider_profile_id', $typeProfileIds)->whereJsonContains('supplier_types', $supplierType))
-            ->with(['providerProfile.subscriptions', 'categories', 'products' => fn ($q) => $q->where('approval_status', 'approved')->where('is_published', true)->with('category')->latest()->take(4)])
-            ->latest()->paginate(12)->withQueryString();
+            ->with(['providerProfile.subscriptions', 'categories', 'products' => fn ($q) => $q->where('approval_status', 'approved')->where('is_published', true)->with('category')->latest()->take(4)]);
+        $suppliers = \App\Support\PlanRanking::apply($suppliers, 'supplier')->paginate(12)->withQueryString();
         $products = SupplierProduct::query()->where('approval_status', 'approved')->where('is_published', true)
             ->whereHas('supplier', fn ($q) => $q->whereIn('provider_profile_id', $profileIds))
             ->when($term !== '', fn ($q) => $q->where(fn ($p) => $p->where('name', 'like', "%{$term}%")->orWhere('brand', 'like', "%{$term}%")
@@ -66,7 +66,6 @@ class SupplierDirectoryController extends Controller
             if (empty($supplier->public_entitlements['promotional_banner']) || ! $supplier->promotional_banner_approved || ($supplier->promotional_banner_ends_at && $supplier->promotional_banner_ends_at->isPast())) $supplier->promotional_banner = null;
             return $supplier;
         });
-        $suppliers->setCollection($suppliers->getCollection()->sortByDesc(fn ($supplier) => $supplier->is_featured && ! empty($supplier->public_entitlements['featured_supplier']))->values());
         $products->getCollection()->transform(function ($product) use ($portal) {
             $product->public_entitlements = $product->supplier?->providerProfile ? $portal->entitlements($product->supplier->providerProfile) : [];
             if (empty($product->public_entitlements['product_images'])) { $product->image = null; $product->additional_images = []; }

@@ -26,6 +26,26 @@ class ProviderPaymentReviewController extends Controller
         return view('admin.provider_payments.index', compact('payments'));
     }
 
+    public function recheck(ProviderPaymentTransaction $transaction): RedirectResponse
+    {
+        checkAdminHasPermissionAndThrowException('client.payment.view');
+        abort_unless($transaction->gateway === 'paystack', 422);
+        try {
+            $status = app(\App\Services\ProviderPaystackService::class)->reconcile($transaction);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            return back()->with(['message' => $e->getMessage() ?: __('Paystack check failed.'), 'alert-type' => 'error']);
+        }
+        $transaction->refresh();
+        if ($transaction->status === 'paid') {
+            return back()->with(['message' => __('Paystack confirms this payment. The subscription has been activated.'), 'alert-type' => 'success']);
+        }
+        if ($transaction->status === 'failed') {
+            return back()->with(['message' => __('Paystack reports this checkout ended without payment (:reason). It has been closed; the provider can pay again from their plan page and will get a fresh Paystack checkout.', ['reason' => data_get($transaction->gateway_payload, 'last_check.gateway_response') ?: $status]), 'alert-type' => 'warning']);
+        }
+        $hint = data_get($transaction->gateway_payload, 'last_check.gateway_response');
+        return back()->with(['message' => __('Paystack reports this payment as ":status" — no money has been received for this reference yet.', ['status' => $status]).($hint ? ' ('.$hint.')' : ''), 'alert-type' => 'warning']);
+    }
+
     public function update(Request $request, ProviderPaymentTransaction $transaction): RedirectResponse
     {
         checkAdminHasPermissionAndThrowException('client.payment.refund');

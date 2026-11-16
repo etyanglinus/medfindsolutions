@@ -23,8 +23,8 @@ class SchoolDirectoryController extends Controller
             ->when($term !== '', fn ($q) => $q->where(fn ($s) => $s->where('name', 'like', "%{$term}%")
                 ->orWhere('location', 'like', "%{$term}%")
                 ->orWhereHas('courses', fn ($c) => $c->where('approval_status', 'approved')->where('name', 'like', "%{$term}%"))))
-            ->with(['providerProfile.subscriptions', 'courses' => fn ($q) => $q->where('approval_status', 'approved')->orderBy('name')])
-            ->orderBy('name')->paginate(12)->withQueryString();
+            ->with(['providerProfile.subscriptions', 'courses' => fn ($q) => $q->where('approval_status', 'approved')->orderBy('name')]);
+        $institutions = \App\Support\PlanRanking::apply($institutions, 'school')->paginate(12)->withQueryString();
         $publishedCourses = HealthcareCourse::query()->where('approval_status', 'approved')->whereHas('institution', fn ($q) => $q->published())
             ->when($term !== '', fn ($q) => $q->where('name', 'like', "%{$term}%"))
             ->select('name', 'slug')->distinct()->orderBy('name')->limit(100)->get();

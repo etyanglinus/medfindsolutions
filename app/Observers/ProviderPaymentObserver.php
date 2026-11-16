@@ -11,6 +11,8 @@ class ProviderPaymentObserver
     {
         if ($payment->status === 'paid' && $payment->wasChanged('status') && data_get($payment->subscription?->metadata, 'admin_onboarding')) {
             ActivateAdminClient::dispatch($payment->id)->afterCommit();
+        } elseif ($payment->status === 'paid' && $payment->wasChanged('status')) {
+            \App\Jobs\SendProviderPaymentConfirmation::dispatch($payment->id)->afterCommit();
         }
     }
 }

@@ -133,7 +133,8 @@
             <div class="row g-4">
                 @forelse($suppliers as $supplier)
                 <div class="col-lg-6">
-                    <article class="mf-supplier-card h-100">
+                    <article class="mf-supplier-card h-100 position-relative">
+                        @include('patient.partials.featured-badge', ['item' => $supplier])
                         <div class="mf-supplier-card__body">
                             <div class="d-flex gap-3 align-items-start">
                                 <div class="mf-supplier-card__logo flex-shrink-0">

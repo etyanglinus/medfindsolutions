@@ -95,7 +95,8 @@
                 @php $subscription = $clinic->latestSubscription; @endphp
                 <div class="col-sm-6 col-lg-4 col-xl-3">
                     <article class="mf-listing-card h-100">
-                        <div class="mf-listing-card__media">
+                        <div class="mf-listing-card__media position-relative">
+                            @include('patient.partials.featured-badge', ['item' => $clinic])
                             @if($clinic->logo)
                                 <img src="{{ Str::startsWith($clinic->logo, ['http','//']) ? $clinic->logo : asset($clinic->logo) }}"
                                      alt="{{ $clinic->name }}" loading="lazy">

@@ -96,7 +96,7 @@ class SubscriptionCheckoutRegressionTest extends TestCase
  ->push(["status" => true, "data" => ["status" => "success", "reference" => $payment->gateway_reference, "amount" => 500000, "currency" => "KES", "customer" => ["email" => "supplier@example.test"]]])
  ->push(["status" => true, "data" => ["status" => "success", "reference" => $payment->gateway_reference, "amount" => 375000, "currency" => "KES", "customer" => ["email" => "supplier@example.test"]]])]);
  $url = route("provider.paystack.callback", ["reference" => $payment->gateway_reference]);
- $this->getJson($url)->assertUnprocessable();
+ $this->get($url)->assertRedirect()->assertSessionHas("alert-type", "warning");
  $this->assertSame("initiated", $payment->fresh()->status);
  $this->get($url)->assertRedirect(route("login", ["type" => "supplier"]));
  $this->assertSame("paid", $payment->fresh()->status);

@@ -24,6 +24,8 @@ class Kernel extends ConsoleKernel {
      */
     protected function schedule(Schedule $schedule): void {
         $schedule->command('clients:retry-activation')->everyFiveMinutes()->withoutOverlapping();
+        // Picks up M-Pesa / bank-transfer payments that finished after the payer left Paystack.
+        $schedule->command('paystack:reconcile')->everyTenMinutes()->withoutOverlapping();
         // php artisan schedule:run >> /dev/null 2>&1
         // run queue jobs
         $schedule->command('queue:work --tries=3 --stop-when-empty')

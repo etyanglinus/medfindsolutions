@@ -78,7 +78,8 @@
         <div class="row g-4">
             @forelse($institutions as $institution)
                 <div class="col-lg-6">
-                    <article class="mf-school-card h-100">
+                    <article class="mf-school-card h-100 position-relative">
+                        @include('patient.partials.featured-badge', ['item' => $institution])
                         {{-- blue top accent bar --}}
                         <div class="mf-school-card__accent"></div>
 

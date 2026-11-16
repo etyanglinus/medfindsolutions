@@ -38,7 +38,14 @@ class ProviderPaystackService
         $this->secret();
         $plan = app(SubscriptionPlanService::class)->find($type, $code);
         if (!$plan) throw ValidationException::withMessages(['package' => __('Choose an available subscription plan.')]);
-        if ($existing = $this->pendingAttempt($client, $type, $code, $couponCode)) return $existing;
+        if ($existing = $this->pendingAttempt($client, $type, $code, $couponCode)) {
+            if (!$this->isStale($existing)) return $existing;
+            // An old attempt's Paystack checkout may have expired. Ask Paystack: if it was paid, settle it;
+            // if it expired, close it and fall through to a fresh attempt with a new reference.
+            try { $this->reconcile($existing); } catch (\Symfony\Component\HttpKernel\Exception\HttpException) { return $existing; }
+            $existing->refresh();
+            if ($existing->status !== ProviderPaymentTransaction::STATUS_FAILED) return $existing;
+        }
         $email = $client->email ?? $client->official_email;
         $quote = $couponCode ? app(SubscriptionCouponService::class)->quote($couponCode, $type, $code, $email, $plan['price']) : ['coupon' => null, 'price' => $plan['price'], 'original_price' => $plan['price'], 'discount_amount' => 0];
         if ($quote['price'] <= 0) throw ValidationException::withMessages(['coupon_code' => __('Paystack checkout requires a positive payable amount. Choose a paid plan or a different coupon.')]);
@@ -62,12 +69,37 @@ class ProviderPaystackService
         $response = Http::withToken($this->secret())->timeout(30)->post('https://api.paystack.co/transaction/initialize', [
             'email' => data_get($payment->gateway_payload, 'expected_email') ?: ($payment->providerProfile->provider->email ?? $payment->providerProfile->provider->official_email),
             'amount' => (int) round((float) $payment->amount * 100), 'currency' => $payment->currency,
-            'reference' => $payment->gateway_reference, 'callback_url' => route('provider.paystack.callback'),
+            'reference' => $payment->gateway_reference,
+            // Where Paystack sends the provider after paying. This per-transaction value overrides the
+            // dashboard "Callback URL", so payments return to this site even if the dashboard is blank.
+            'callback_url' => self::callbackUrl(),
+            'metadata' => [
+                // Pressing "Cancel" on the Paystack page brings the provider back to their plan page.
+                'cancel_action' => self::callbackUrl(['reference' => $payment->gateway_reference, 'cancelled' => 1]),
+                'provider_type' => $payment->providerProfile?->provider_type,
+                'plan_code' => $payment->subscription?->plan_code,
+                'custom_fields' => array_values(array_filter([
+                    ['display_name' => 'Account type', 'variable_name' => 'provider_type', 'value' => (string) $payment->providerProfile?->provider_type],
+                    ['display_name' => 'Plan', 'variable_name' => 'plan', 'value' => (string) $payment->subscription?->package_name],
+                ], fn ($field) => $field['value'] !== '')),
+            ],
         ]);
         $url = $response->json('data.authorization_url');
         abort_unless($response->successful() && $response->json('status') === true && is_string($url) && parse_url($url, PHP_URL_SCHEME) === 'https' && parse_url($url, PHP_URL_HOST) === 'checkout.paystack.com', 502, __('Paystack checkout could not be started. Please try again.'));
         $payment->update(['gateway_payload' => array_merge($payment->gateway_payload ?? [], ['authorization_url' => $url, 'access_code' => $response->json('data.access_code')])]);
         return $url;
+    }
+
+    /** Public URL Paystack redirects the payer to after checkout. */
+    public static function callbackUrl(array $query = []): string
+    {
+        return route('provider.paystack.callback', $query);
+    }
+
+    /** Public URL Paystack POSTs signed events (charge.success) to. Set it as the dashboard "Webhook URL". */
+    public static function webhookUrl(): string
+    {
+        return route('api.provider-payments.paystack.webhook');
     }
 
     public function verify(string $reference): ProviderPaymentTransaction
@@ -82,6 +114,63 @@ class ProviderPaystackService
         return $payment;
     }
 
+    /**
+     * Ask Paystack for the current state of a stuck attempt and apply it if it has been paid.
+     * Safety net for M-Pesa / bank transfers that finish after the payer left the checkout page,
+     * and for sites where the webhook is not (yet) configured. Never marks anything paid unless
+     * Paystack itself reports success for the exact reference, amount, currency and email.
+     *
+     * @return string Paystack's transaction status (success, ongoing, abandoned, failed, ...) or "already_paid".
+     */
+    public function reconcile(ProviderPaymentTransaction $payment): string
+    {
+        abort_unless($payment->gateway === 'paystack', 422);
+        if ($payment->status === 'paid') return 'already_paid';
+        $response = Http::withToken($this->secret())->timeout(30)->get('https://api.paystack.co/transaction/verify/'.rawurlencode($payment->gateway_reference));
+        abort_unless($response->successful() && $response->json('status') === true && $response->json('data.reference') === $payment->gateway_reference, 502, __('Paystack could not be reached to check this payment.'));
+        $status = (string) $response->json('data.status');
+        $payment->update(['gateway_payload' => array_merge($payment->gateway_payload ?? [], ['last_check' => [
+            'at' => now()->toIso8601String(), 'status' => $status, 'channel' => $response->json('data.channel'), 'gateway_response' => $response->json('data.gateway_response'),
+        ]])]);
+        if ($status === 'success') {
+            $this->settle($response->json('data'));
+        } elseif (in_array($status, ['failed', 'reversed'], true) || ($status === 'abandoned' && $this->isStale($payment))) {
+            $this->closeUnpaid($payment, (string) ($response->json('data.gateway_response') ?: $status));
+        }
+        return $status;
+    }
+
+    /** Attempts older than this are re-checked with Paystack before being reused or kept open. */
+    private function isStale(ProviderPaymentTransaction $payment): bool
+    {
+        return $payment->created_at && $payment->created_at->lte(now()->subMinutes(30));
+    }
+
+    /**
+     * Paystack says this checkout ended without payment (expired, failed or reversed): mark the attempt
+     * failed, cancel its pending subscription and release any coupon, so the provider's next click
+     * starts a new checkout. If money still arrives for it later, settle() accepts it.
+     */
+    private function closeUnpaid(ProviderPaymentTransaction $payment, string $reason): void
+    {
+        DB::transaction(function () use ($payment, $reason) {
+            $payment = ProviderPaymentTransaction::whereKey($payment->id)->lockForUpdate()->first();
+            if (!$payment || !in_array($payment->status, ['initiated', 'pending'], true)) return;
+            $subscription = ProviderSubscription::whereKey($payment->provider_subscription_id)->lockForUpdate()->first();
+            if ($subscription && $subscription->status === 'pending') {
+                $metadata = $subscription->metadata ?? [];
+                if (!empty($metadata['coupon_consumed']) && !empty($metadata['coupon_code'])) {
+                    $coupon = \App\Models\SubscriptionCoupon::whereRaw('upper(code) = ?', [strtoupper($metadata['coupon_code'])])->lockForUpdate()->first();
+                    if ($coupon && $coupon->usage_count > 0) $coupon->decrement('usage_count');
+                    $metadata['coupon_consumed'] = false;
+                }
+                $subscription->update(['status' => 'cancelled', 'cancelled_at' => now(), 'metadata' => array_merge($metadata, ['closed_unpaid' => true])]);
+            }
+            $payment->update(['status' => 'failed', 'failure_reason' => __('Paystack: :reason', ['reason' => $reason]),
+                'gateway_payload' => array_merge($payment->gateway_payload ?? [], ['closed_unpaid_at' => now()->toIso8601String()])]);
+        });
+    }
+
     public function settle(array $data): ?bool
     {
         return DB::transaction(function () use ($data) {
@@ -92,9 +181,10 @@ class ProviderPaystackService
             $subscription = ProviderSubscription::whereKey($payment->provider_subscription_id)->lockForUpdate()->firstOrFail();
             $client = $profile->provider;
             $archived = $profile->trashed() || !$client;
-            abort_unless(in_array($payment->status, ['initiated', 'pending']) || ($archived && $payment->status === 'failed'), 422);
+            $closedUnpaid = $payment->status === 'failed' && data_get($payment->gateway_payload, 'closed_unpaid_at');
+            abort_unless(in_array($payment->status, ['initiated', 'pending']) || ($archived && $payment->status === 'failed') || $closedUnpaid, 422);
             $email = data_get($payment->gateway_payload, 'expected_email') ?: ($client?->email ?? $client?->official_email);
-            abort_unless(($data['status'] ?? '') === 'success' && $subscription->provider_profile_id === $profile->id && ($subscription->status === 'pending' || ($archived && $subscription->status === 'cancelled'))
+            abort_unless(($data['status'] ?? '') === 'success' && $subscription->provider_profile_id === $profile->id && ($subscription->status === 'pending' || ($archived && $subscription->status === 'cancelled') || ($closedUnpaid && $subscription->status === 'cancelled'))
                 && (int) ($data['amount'] ?? -1) === (int) round((float) $payment->amount * 100)
                 && (float) $payment->amount === (float) $subscription->amount && strtoupper($data['currency'] ?? '') === $payment->currency
                 && $payment->currency === $subscription->currency && $email && strtolower(data_get($data, 'customer.email', '')) === strtolower($email), 422, __('Payment does not match this account and plan.'));
