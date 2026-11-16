@@ -70,6 +70,11 @@ fi
 
 "$PHP" artisan down --retry=15 && WENT_DOWN=1
 
+# Tracked files under storage/ are only placeholders (.gitignore) and old scripts. Copying a live
+# storage/ folder over a fresh clone marks them as changed, which makes git refuse to update.
+# Real data in storage/ is untracked and never touched by this.
+git checkout -- storage 2>/dev/null || true
+
 # .env used to be tracked in git. Undo local edits to the tracked copy so git can update or
 # remove it, then always put the live copy back afterwards.
 if git ls-files --error-unmatch .env >/dev/null 2>&1; then git checkout -- .env; fi
