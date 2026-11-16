@@ -2,75 +2,75 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\ProviderRenewalReminder;
 use App\Models\ProviderSubscription;
+use App\Services\ProviderRenewalLinks;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Modules\Doctor\app\Models\ClinicSubscription;
 use Modules\Doctor\app\Models\DoctorSubscription;
 
+/**
+ * Daily: emails providers whose plan ends in 7 days or tomorrow, with a "Renew now" button that
+ * opens their plan page without a login. Specialists and facilities are read from their own plan
+ * tables only (their rows are mirrored in provider_subscriptions, which used to email them twice).
+ */
 class SendSubscriptionExpiryReminders extends Command
 {
     protected $signature = 'subscriptions:send-expiry-reminders';
-    protected $description = 'Email providers whose subscriptions expire in 7 days';
+    protected $description = 'Email providers whose subscriptions expire in 7 days or tomorrow';
 
-    public function handle(): int
+    public const DAYS_BEFORE = [7, 1];
+
+    public function handle(ProviderRenewalLinks $links): int
     {
-        // ── Legacy doctor subscriptions ──────────────────────────────
-        DoctorSubscription::with('doctor')
-            ->where('status', 'approved')
-            ->whereDate('expires_at', today()->addDays(7))
-            ->get()
-            ->each(function ($subscription) {
-                $email = $subscription->doctor?->email ?? null;
-                $name  = $subscription->doctor?->name  ?? null;
-                $this->send($email, $name, 'subscriptions:send-expiry-reminders (doctor)');
-            });
+        $sent = 0;
+        foreach (self::DAYS_BEFORE as $days) {
+            $day = today()->addDays($days);
 
-        // ── Legacy clinic subscriptions ───────────────────────────────
-        ClinicSubscription::with('clinic')
-            ->where('status', 'approved')
-            ->whereDate('expires_at', today()->addDays(7))
-            ->get()
-            ->each(function ($subscription) {
-                $email = $subscription->clinic?->email ?? $subscription->clinic?->official_email ?? null;
-                $name  = $subscription->clinic?->name  ?? null;
-                $this->send($email, $name, 'subscriptions:send-expiry-reminders (clinic)');
-            });
+            DoctorSubscription::with('doctor')->where('status', 'approved')->whereDate('expires_at', $day)->get()
+                ->each(function ($s) use ($links, $days, &$sent) { $sent += $this->remind('doctor', $s->doctor, $s->package_name, $s->expires_at, $days, $links); });
 
-        // ── School / supplier ProviderSubscriptions ───────────────────
-        ProviderSubscription::with('providerProfile')
-            ->where('status', ProviderSubscription::STATUS_APPROVED)
-            ->whereDate('expires_at', today()->addDays(7))
-            ->get()
-            ->each(function ($subscription) {
-                $profile  = $subscription->providerProfile;
-                if (! $profile) return;
+            ClinicSubscription::with('clinic')->where('status', 'approved')->whereDate('expires_at', $day)->get()
+                ->each(function ($s) use ($links, $days, &$sent) { $sent += $this->remind('clinic', $s->clinic, $s->package_name, $s->expires_at, $days, $links); });
 
-                // Resolve the underlying entity so we can get the email address
-                $provider = $profile->provider;
-                if (! $provider) return;
+            ProviderSubscription::with('providerProfile')->where('status', ProviderSubscription::STATUS_APPROVED)->whereDate('expires_at', $day)
+                ->whereHas('providerProfile', fn ($q) => $q->whereIn('provider_type', ['school', 'supplier']))->get()
+                ->each(function ($s) use ($links, $days, &$sent) {
+                    $profile = $s->providerProfile;
+                    $sent += $this->remind($profile->provider_type, $profile->provider, $s->package_name, $s->expires_at, $days, $links);
+                });
+        }
 
-                $email = $provider->official_email ?? null;
-                $name  = $provider->name ?? null;
-                $this->send($email, $name, 'subscriptions:send-expiry-reminders (' . $profile->provider_type . ')');
-            });
-
-        $this->info('Subscription expiry reminders processed.');
+        $this->info("Subscription expiry reminders sent: {$sent}.");
         return self::SUCCESS;
     }
 
-    private function send(?string $email, ?string $name, string $context): void
+    private function remind(string $type, ?Model $client, ?string $plan, $expiresAt, int $days, ProviderRenewalLinks $links): int
     {
-        if (! $email) return;
+        $email = $client ? ProviderRenewalLinks::email($client) : null;
+        if (!$email) return 0;
+        // A renewal already paid for (a later plan) means no reminder is needed.
+        if ($this->hasLaterPlan($type, $client, $expiresAt)) return 0;
 
         try {
-            Mail::raw(
-                __('Your MedFind subscription expires in 7 days. Sign in to renew and keep your profile visible.'),
-                fn ($mail) => $mail->to($email, $name)->subject(__('MedFind subscription expiry reminder'))
-            );
+            Mail::to($email, $client->name)->send(new ProviderRenewalReminder(
+                $client->name, (string) ($plan ?: 'MedFind'), $expiresAt->format('d M Y'), $days, $links->url($type, $client),
+            ));
+            return 1;
         } catch (\Throwable $e) {
-            Log::warning("Subscription reminder could not be sent [{$context}] to {$email}: " . $e->getMessage());
+            Log::warning("Expiry reminder could not be sent to {$type} #{$client->id}: ".$e->getMessage());
+            return 0;
         }
+    }
+
+    private function hasLaterPlan(string $type, Model $client, $expiresAt): bool
+    {
+        $query = in_array($type, ['doctor', 'clinic'], true)
+            ? $client->subscriptions()
+            : ProviderSubscription::whereHas('providerProfile', fn ($q) => $q->where('provider_type', $type)->where('provider_id', $client->id));
+        return $query->where('status', 'approved')->where('expires_at', '>', $expiresAt)->exists();
     }
 }

@@ -113,6 +113,13 @@ class PaystackCheckoutController extends Controller
         ]);
     }
 
+    /** Signed "Renew now" link from emails: opens the provider's plan page, no login needed. */
+    public function renewLink(string $type, int $id)
+    {
+        $client = ProviderPaystackService::model($type)::findOrFail($id);
+        return redirect()->to(app(\App\Services\ProviderRenewalLinks::class)->planPageUrl($type, $client));
+    }
+
     public function retry(ProviderPaymentTransaction $transaction)
     {
         checkAdminHasPermissionAndThrowException('client.payment.view');

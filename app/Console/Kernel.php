@@ -40,8 +40,9 @@ class Kernel extends ConsoleKernel {
         })->everyFiveMinutes()->name('cron_test')->withoutOverlapping();
 
         $schedule->command('inactive:subscriber')->hourly();
-        $schedule->command('prenotification:appointment')->everyMinute();
         $schedule->command('subscriptions:send-expiry-reminders')->dailyAt('08:00')->withoutOverlapping();
+        // Monthly listing performance emails: hourly on the 1st-3rd, 100 per run (host email caps).
+        $schedule->command('providers:send-monthly-report --limit=100')->hourlyAt(15)->when(fn () => now()->day <= 3)->withoutOverlapping();
         $schedule->command('providers:expire-subscriptions')->hourly()->withoutOverlapping();
     }
 
