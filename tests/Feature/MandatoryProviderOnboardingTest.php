@@ -124,7 +124,7 @@ class MandatoryProviderOnboardingTest extends TestCase
             $this->assertFalse(app(ProviderOnboardingService::class)->status($client, $type)['complete']);
             $this->post(route('website.partner.documents.store', ['type' => $type]), ['licensing_body' => 'Authority', 'registration_number' => 'REG123', 'license' => \Illuminate\Http\UploadedFile::fake()->createWithContent('license.pdf', "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF")])->assertSessionHasNoErrors()->assertRedirect();
             $this->assertTrue(app(ProviderOnboardingService::class)->status($client, $type)['complete']);
-            $this->get(route('website.partner.dashboard', ['type' => $type]))->assertOk()->assertSee(asset('storage/'.$client->logo));
+            $this->get(route('website.partner.dashboard', ['type' => $type]))->assertOk()->assertSee(asset('uploads/store/'.$client->logo));
         }
     }
 }

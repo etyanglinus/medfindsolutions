@@ -22,3 +22,6 @@ public/uploads/media/
 
 # Live settings and secrets stay on each server, never in git
 .env
+
+# Provider uploads (public disk) live only on the server
+/public/uploads/store/

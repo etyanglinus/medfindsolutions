@@ -7,9 +7,11 @@
 @endadminCan
 @adminCan('school.view')
 <li><a class="nav-link" href="{{ route('admin.provider-profiles.index', ['type' => 'school']) }}"><i class="fas fa-school"></i><span>{{ __('Schools') }}</span></a></li>
+<li><a class="nav-link" href="{{ route('admin.school-courses.index') }}"><i class="fas fa-book-open"></i><span>{{ __('Course reviews') }}</span></a></li>
 @endadminCan
 @adminCan('supplier.view')
 <li><a class="nav-link" href="{{ route('admin.provider-profiles.index', ['type' => 'supplier']) }}"><i class="fas fa-boxes"></i><span>{{ __('Suppliers') }}</span></a></li>
+<li><a class="nav-link" href="{{ route('admin.supplier-listings.index') }}"><i class="fas fa-box-open"></i><span>{{ __('Product reviews') }}</span></a></li>
 @endadminCan
 @adminCan('doctor.view')
 <li><a class="nav-link" href="{{ route('admin.provider-documents.index', ['provider_type' => 'school']) }}"><i class="fas fa-file-alt"></i><span>{{ __('Provider Documents') }}</span></a></li>
