@@ -15,7 +15,9 @@ class TrackListingEngagement {
         $service = app(ListingInsightsService::class);
         if (isset($directories[$name])) {
             [$type, $key] = $directories[$name];
-            foreach ($data[$key] ?? [] as $client) $service->record($type, $client->id, 'search_appearance');
+            $ids = [];
+            foreach ($data[$key] ?? [] as $client) $ids[] = $client->id;   // works for paginators and collections
+            $service->recordMany($type, $ids, 'search_appearance');
         }
         if (isset($profiles[$name])) {
             [$type, $key] = $profiles[$name]; $client = $data[$key] ?? null;

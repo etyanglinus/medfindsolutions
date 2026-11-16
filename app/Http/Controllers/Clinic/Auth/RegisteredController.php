@@ -27,6 +27,8 @@ class RegisteredController extends Controller {
     }
 
     public function store(Request $request): RedirectResponse {
+        // Frees the email if an earlier sign-up with it was never paid/activated.
+        app(\App\Services\UnfinishedSignupService::class)->clearForRegistration('clinic', $request->input('email'));
         $request->validate([
             'name'      => ['required', 'string', 'max:255'],
             'specialty' => ['required', 'string', 'max:255'],
@@ -37,7 +39,7 @@ class RegisteredController extends Controller {
             'name.required'      => __('Clinic name is required.'),
             'specialty.required' => __('Specialty is required.'),
             'email.required'     => __('Email is required.'),
-            'email.unique'       => __('This email is already registered.'),
+            'email.unique'       => __('An account with this email already exists. Please log in, or use "Forgot password" if you cannot remember your password.'),
             'phone.required'     => __('Phone number is required.'),
             'password.required'  => __('Password is required.'),
             'password.confirmed' => __('Confirm password does not match.'),
@@ -47,7 +49,7 @@ class RegisteredController extends Controller {
         DB::beginTransaction();
         try {
             $slug = Str::slug($request->name);
-            if (Clinic::whereSlug($slug)->exists()) {
+            if (Clinic::withTrashed()->whereSlug($slug)->exists()) {
                 $slug = $slug . '-' . Str::random(5);
             }
 

@@ -34,6 +34,8 @@ class RegisteredController extends Controller {
         $setting = Cache::get('setting');
         if(! $setting?->doctor_can_register) return redirect()->back();
 
+        // Frees the email if an earlier sign-up with it was never paid/activated.
+        app(\App\Services\UnfinishedSignupService::class)->clearForRegistration('doctor', $request->input('email'));
         $request->validate([
             'name'                     => ['required', 'string', 'max:255'],
             'licensing_body_id'        => ['required', 'integer', 'exists:licensing_bodies,id'],
@@ -52,7 +54,7 @@ class RegisteredController extends Controller {
             'insurance_provider_ids.array'         => __('The selected insurance providers are invalid.'),
             'insurance_provider_ids.*.exists'      => __('The selected insurance provider is invalid.'),
             'email.required'                       => __('Email is required'),
-            'email.unique'                         => __('Email already exist'),
+            'email.unique'                         => __('An account with this email already exists. Please log in, or use "Forgot password" if you cannot remember your password.'),
             'phone.required'                       => __('Phone number is required.'),
             'password.required'                    => __('Password is required'),
             'password.confirmed'                   => __('Confirm password does not match'),
