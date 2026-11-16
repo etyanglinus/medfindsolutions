@@ -311,7 +311,7 @@ class PartnerPortalController extends Controller
         abort_if($limit === null, 403, __('An active package is required to manage products.'));
         $request->validate(['file' => ['required', 'file', 'mimes:csv,txt', 'max:5120']]);
         $result = app(\App\Services\SupplierProductImport::class)->import($record, $request->file('file'), $limit, $entitlements);
-        $message = __(':created products added and :updated updated. They stay hidden until an admin approves them.', ['created' => $result['created'], 'updated' => $result['updated']]);
+        $message = __('Import finished: :created added, :updated updated. Imported products stay hidden until an admin approves them.', ['created' => $result['created'], 'updated' => $result['updated']]);
         return back()->with(['message' => $message, 'import_errors' => array_slice($result['errors'], 0, 100)]);
     }
 
