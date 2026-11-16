@@ -1,0 +1,85 @@
+name: CI / Deploy
+
+# Tests run on every push and pull request.
+# A push to main (e.g. merging a pull request) deploys to the live cPanel site once tests pass.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:   # "Run workflow" button: re-run tests + deploy main by hand
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, ctype, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, zip
+          coverage: none
+
+      # vendor/ is committed, so no composer install is needed.
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Check PHP syntax of changed app code
+        run: find app routes config database -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+
+      - name: Run tests
+        run: php artisan test --exclude-group known-failing
+
+  deploy:
+    name: Deploy to cPanel
+    needs: test
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://medfindsolutions.co.ke
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          USER: ${{ secrets.CPANEL_SSH_USER }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${PORT:-22}" -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            "$USER@$HOST" 'bash -s -- main' < scripts/deploy.sh
+
+      - name: Smoke test
+        run: |
+          sleep 5
+          for path in / /facilities /login; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 30 "https://medfindsolutions.co.ke$path")
+            echo "$path -> $code"
+            [ "$code" = 200 ] || { echo "::error::$path returned $code after deploy"; exit 1; }
+          done

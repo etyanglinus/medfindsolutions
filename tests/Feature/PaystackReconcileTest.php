@@ -114,4 +114,61 @@ class PaystackReconcileTest extends TestCase
         $this->post(route('website.partner.login.store', ['type' => 'supplier']), ['email' => 'payer@clinic.test', 'password' => 'secret-pass'])
             ->assertRedirect(route('website.partner.dashboard', ['type' => 'supplier']));
     }
+
+    public function test_expired_checkout_is_closed_and_next_attempt_gets_a_fresh_reference(): void
+    {
+        [$clinic, $payment] = $this->stuckClinicPayment();
+        $this->travel(2)->hours();
+        $this->paystackSays('abandoned', $payment);
+
+        $this->artisan('paystack:reconcile')->assertSuccessful();
+
+        $payment->refresh();
+        $this->assertSame('failed', $payment->status);
+        $this->assertStringContainsString('abandoned', $payment->failure_reason);
+        $this->assertSame('cancelled', $payment->subscription->fresh()->status);
+
+        // Paying again creates a new attempt instead of reusing the expired Paystack page.
+        $next = app(ProviderPaystackService::class)->createAttempt($clinic, 'clinic', 'premium');
+        $this->assertNotSame($payment->gateway_reference, $next->gateway_reference);
+        $this->assertSame('initiated', $next->status);
+    }
+
+    public function test_recent_abandoned_checkout_is_kept_open_while_the_payer_may_still_be_paying(): void
+    {
+        [, $payment] = $this->stuckClinicPayment();
+        $this->paystackSays('abandoned', $payment);
+
+        $this->artisan('paystack:reconcile');
+
+        $this->assertSame('initiated', $payment->fresh()->status);
+    }
+
+    public function test_stale_attempt_is_rechecked_on_retry_and_expired_one_is_replaced(): void
+    {
+        [$clinic, $payment] = $this->stuckClinicPayment();
+        $this->travel(2)->hours();
+        $this->paystackSays('abandoned', $payment);
+
+        $next = app(ProviderPaystackService::class)->createAttempt($clinic, 'clinic', 'premium');
+
+        $this->assertNotSame($payment->id, $next->id);
+        $this->assertSame('failed', $payment->fresh()->status);
+    }
+
+    public function test_money_arriving_after_an_attempt_was_closed_is_still_accepted(): void
+    {
+        [$clinic, $payment] = $this->stuckClinicPayment();
+        $this->travel(2)->hours();
+        $this->paystackSays('abandoned', $payment);
+        $this->artisan('paystack:reconcile');
+        $this->assertSame('failed', $payment->fresh()->status);
+
+        app(ProviderPaystackService::class)->settle(['reference' => $payment->gateway_reference, 'status' => 'success',
+            'amount' => (int) round($payment->amount * 100), 'currency' => 'KES', 'customer' => ['email' => 'payer@clinic.test']]);
+
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('approved', $payment->subscription->fresh()->status);
+        $this->assertSame(1, (int) $clinic->fresh()->status);
+    }
 }

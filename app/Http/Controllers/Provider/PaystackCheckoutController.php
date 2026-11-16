@@ -33,6 +33,10 @@ class PaystackCheckoutController extends Controller
         $service = app(ProviderPaystackService::class);
         try {
             $payment = $service->createAttempt($client, $type, $data['package'], $data['coupon_code'] ?? null);
+            if ($payment->status === ProviderPaymentTransaction::STATUS_PAID) {
+                // Re-checking an earlier attempt showed it had already been paid; it is now applied.
+                return redirect()->to($this->dashboardUrl($type) ?? route('login', ['type' => $type]))->with(['message' => __('Your earlier payment has been confirmed by Paystack and your subscription is active.'), 'alert-type' => 'success']);
+            }
             return redirect()->away($service->initialize($payment));
         } catch (HttpException $e) {
             // Gateway down, Paystack disabled or wrong keys: send the provider back to the plan page

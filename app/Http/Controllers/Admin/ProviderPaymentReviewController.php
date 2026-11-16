@@ -39,6 +39,9 @@ class ProviderPaymentReviewController extends Controller
         if ($transaction->status === 'paid') {
             return back()->with(['message' => __('Paystack confirms this payment. The subscription has been activated.'), 'alert-type' => 'success']);
         }
+        if ($transaction->status === 'failed') {
+            return back()->with(['message' => __('Paystack reports this checkout ended without payment (:reason). It has been closed; the provider can pay again from their plan page and will get a fresh Paystack checkout.', ['reason' => data_get($transaction->gateway_payload, 'last_check.gateway_response') ?: $status]), 'alert-type' => 'warning']);
+        }
         $hint = data_get($transaction->gateway_payload, 'last_check.gateway_response');
         return back()->with(['message' => __('Paystack reports this payment as ":status" — no money has been received for this reference yet.', ['status' => $status]).($hint ? ' ('.$hint.')' : ''), 'alert-type' => 'warning']);
     }
