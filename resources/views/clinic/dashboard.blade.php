@@ -51,8 +51,6 @@
     <x-admin.breadcrumb title="{{ __('Dashboard') }}" />
 
     <div class="section-body px-1">
-        @include('provider.partials.listing-insights', ['insightType' => 'clinic'])
-
       {{-- ═══════════════════════════════════════════════════════
            ROW 1 — Welcome + plan badge
       ═══════════════════════════════════════════════════════ --}}
@@ -108,6 +106,9 @@
           <span>{{ __('You have no active subscription. Your facility is not publicly visible.') }}</span>
         </div>
       @endif
+
+      {{-- Listing performance, below the welcome header and plan status --}}
+      @include('provider.partials.listing-insights', ['insightType' => 'clinic'])
 
       {{-- ═══════════════════════════════════════════════════════
            ROW 2 — Stat cards
