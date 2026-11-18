@@ -29,22 +29,26 @@ class PublicDirectory
      * THE rule for "this specialist / facility is publicly listed", used by the home page, the
      * directories, profile pages, landing pages and the sitemap, so they always agree:
      * the account is switched on, it has an approved plan that has not expired and that does not
-     * exclude search listing, the profile has a photo and a description (never a placeholder page),
+     * exclude search listing, the profile has a photo and a description or an admin override,
      * and (only when the admin switch is on) an approved, current licence.
      * Confirming the email is NOT required to be listed: paying proves the inbox, and sign-in
      * enforces confirmation separately.
      */
-    public function listed(string $type, Builder $query): Builder
+    public function listed(string $type, Builder $query, bool $requireCompleteProfile = true): Builder
     {
         abort_unless(in_array($type, ['doctor', 'clinic'], true), 500);
         $table = $query->getModel()->getTable();
         $photo = $type === 'doctor' ? 'image' : 'logo';
         return app(LicenceVerification::class)->apply($query, $type)
             ->where("$table.status", 1)
-            // No placeholder listings: a photo and a description must be in place before people see it.
-            ->whereNotNull("$table.$photo")->where("$table.$photo", '!=', '')
-            ->when($type === 'doctor', fn ($q) => $q->whereHas('translations', fn ($t) => $t->whereNotNull('about')->where('about', '!=', '')))
-            ->when($type === 'clinic', fn ($q) => $q->whereNotNull("$table.description")->where("$table.description", '!=', ''))
+            ->when($requireCompleteProfile, fn (Builder $query) => $query->where(function (Builder $listing) use ($type, $table, $photo) {
+                $listing->where("$table.allow_incomplete_listing", true)
+                    ->orWhere(function (Builder $complete) use ($type, $table, $photo) {
+                        $complete->whereNotNull("$table.$photo")->where("$table.$photo", '!=', '')
+                            ->when($type === 'doctor', fn ($q) => $q->whereHas('translations', fn ($t) => $t->whereNotNull('about')->where('about', '!=', '')))
+                            ->when($type === 'clinic', fn ($q) => $q->whereNotNull("$table.description")->where("$table.description", '!=', ''));
+                    });
+            }))
             ->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
                 ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
                 ->where(fn ($w) => $w->whereJsonContains('entitlements->search_visibility', true)->orWhereJsonContains('entitlements->contact', true)
@@ -81,7 +85,7 @@ class PublicDirectory
     /**
      * For the admin lists: is this provider on the public site, and if not, why not?
      *
-     * @return array{listed: bool, reasons: list<string>, url: ?string, plan: ?string, expires: ?\Carbon\CarbonInterface, expired: bool}
+     * @return array{listed: bool, reasons: list<string>, url: ?string, profile_issue: ?string, can_show_incomplete: bool, plan: ?string, expires: ?\Carbon\CarbonInterface, expired: bool}
      */
     public function status(string $type, Model $client): array
     {
@@ -108,8 +112,16 @@ class PublicDirectory
             elseif ($subscriptions->whereIn('status', ['pending', 'pending_payment'])->isNotEmpty()) $reasons[] = __('Payment not completed');
             elseif ($profile || in_array($type, ['doctor', 'clinic'], true)) $reasons[] = __('No paid plan');
         }
-        if ($type === 'doctor' && (!filled($client->image) || !$client->translations()->whereNotNull('about')->where('about', '!=', '')->exists())) $reasons[] = __('Profile not completed (photo or description missing)');
-        if ($type === 'clinic' && (!filled($client->logo) || !filled($client->description))) $reasons[] = __('Profile not completed (logo or description missing)');
+        $profileIssue = match ($type) {
+            'doctor' => !filled($client->image) || !$client->translations()->whereNotNull('about')->where('about', '!=', '')->exists()
+                ? __('Profile not completed (photo or description missing)') : null,
+            'clinic' => !filled($client->logo) || !filled($client->description)
+                ? __('Profile not completed (logo or description missing)') : null,
+            default => null,
+        };
+        if ($profileIssue && !$client->allow_incomplete_listing) $reasons[] = $profileIssue;
+        $canShowIncomplete = !$listed && $profileIssue && !$client->allow_incomplete_listing
+            && $this->listed($type, $client->newQuery()->whereKey($client->getKey()), false)->exists();
         if (in_array($type, ['doctor', 'clinic'], true) && app(LicenceVerification::class)->required() && !app(LicenceVerification::class)->hasValidLicence($type, $client->getKey())) {
             $reasons[] = __('Licence not approved (the "verified providers only" switch is on)');
         }
@@ -121,6 +133,7 @@ class PublicDirectory
         } : null;
         $plan = $current ?? $lastApproved;
         return ['listed' => $listed, 'reasons' => $listed ? [] : array_values(array_unique($reasons)), 'url' => $url,
+            'profile_issue' => $profileIssue, 'can_show_incomplete' => $canShowIncomplete,
             'plan' => $plan?->package_name, 'expires' => $plan?->expires_at, 'expired' => !$current && (bool) $lastApproved];
     }
 

@@ -39,6 +39,27 @@ class ProfileCompletionTest extends TestCase
         $this->assertTrue(app(PublicDirectory::class)->status('clinic', $clinic->fresh())['listed']);
     }
 
+    public function test_admin_override_lists_an_incomplete_facility_and_preserves_its_profile_warning(): void
+    {
+        $clinic = $this->paidClinic(0);
+        $directory = app(PublicDirectory::class);
+
+        $hidden = $directory->status('clinic', $clinic);
+        $this->assertFalse($hidden['listed']);
+        $this->assertTrue($hidden['can_show_incomplete']);
+
+        $clinic->forceFill(['allow_incomplete_listing' => true])->save();
+        $shown = $directory->status('clinic', $clinic);
+        $this->assertTrue($shown['listed']);
+        $this->assertFalse($shown['can_show_incomplete']);
+        $this->assertSame('Profile not completed (logo or description missing)', $shown['profile_issue']);
+
+        $clinic->forceFill(['status' => 0])->save();
+        $disabled = $directory->status('clinic', $clinic);
+        $this->assertFalse($disabled['listed']);
+        $this->assertFalse($disabled['can_show_incomplete']);
+    }
+
     public function test_pay_and_forget_reminders_go_once_per_stage_and_stop_when_complete(): void
     {
         Mail::fake();
