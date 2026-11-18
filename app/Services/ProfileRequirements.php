@@ -48,7 +48,7 @@ class ProfileRequirements
             if ($on('whatsapp')) $out['whatsapp'] = [__('WhatsApp number'), fn ($c) => filled($c->whatsapp)];
             if ($on('consultation_fee')) $out['fee'] = [__('Consultation fee'), fn ($c) => (float) $c->fee > 0];
             if ($on('insurance')) $out['accepted_insurance'] = [__('Insurance accepted'), fn ($c) => $c->translations()->get()->contains(fn ($t) => self::visible($t->accepted_insurance) > 0)];
-            if ($on('services') && method_exists($client, 'services')) $out['service_ids'] = [__('At least one service'), fn ($c) => $c->services()->exists()];
+            if ($on('services') && \Modules\Doctor\app\Models\Service::query()->whereNotNull('name')->where('status', true)->exists()) $out['service_ids'] = [__('At least one service'), fn ($c) => $c->services()->exists()];
         } elseif ($type === 'clinic') {
             $out['description'] = [$about, fn ($c) => $text($c->description)];
             if ($on('whatsapp')) $out['whatsapp'] = [__('WhatsApp number'), fn ($c) => filled($c->whatsapp)];

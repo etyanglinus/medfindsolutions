@@ -33,6 +33,7 @@ class ProviderEngagementController extends Controller {
     public function storeReview(Request $request, string $type, int $provider): RedirectResponse {
         $model = $this->provider($type, $provider);
         abort_unless(app(SubscriptionAccessService::class)->{$type . 'Can'}($model, 'reviews'), 404);
+        abort_if($type === 'doctor' && $model->reviews_enabled === false, 404);
         $data = $request->validate([
             'reviewer_name' => ['required', 'string', 'max:255'], 'reviewer_email' => ['nullable', 'email', 'max:255'],
             'rating' => ['required', 'integer', 'between:1,5'], 'review' => ['required', 'string', 'max:3000'],

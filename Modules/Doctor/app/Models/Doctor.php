@@ -38,6 +38,9 @@ class Doctor extends Authenticatable {
         'password',
         'phone',
         'whatsapp',
+        'telemedicine_available',
+        'emergency_available',
+        'reviews_enabled',
         'forget_password_token',
         'email_verified_at',
         'email_verified_token',
@@ -62,6 +65,9 @@ class Doctor extends Authenticatable {
      */
     protected $casts = [
         'password' => 'hashed',
+        'telemedicine_available' => 'boolean',
+        'emergency_available' => 'boolean',
+        'reviews_enabled' => 'boolean',
     ];
 
     public function getDesignationsAttribute(): ?string {

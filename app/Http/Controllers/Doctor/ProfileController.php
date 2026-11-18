@@ -59,6 +59,9 @@ class ProfileController extends Controller {
         $code = Language::where('code', $submittedCode)->exists() ? $submittedCode : $fallbackCode;
 
         $rules = [
+            'telemedicine_available' => $subscription->hasEntitlement('telemedicine') ? 'sometimes|boolean' : 'exclude',
+            'emergency_available' => $subscription->hasEntitlement('emergency') ? 'sometimes|boolean' : 'exclude',
+            'reviews_enabled' => $subscription->hasEntitlement('reviews') ? 'sometimes|boolean' : 'exclude',
             'code' => 'required|exists:languages,code',
             'name'  => 'required|string|max:255',
             'email' => 'required|unique:doctors,email,' . $doctor->id,
@@ -136,8 +139,8 @@ class ProfileController extends Controller {
         }
 
         $doctor->update($validatedData);
-        if ($subscription->hasEntitlement('services')) {
-            $doctor->services()->sync($validatedData['service_ids'] ?? []);
+        if ($subscription->hasEntitlement('services') && array_key_exists('service_ids', $validatedData)) {
+            $doctor->services()->sync($validatedData['service_ids']);
         }
 
 

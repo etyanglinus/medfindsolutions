@@ -85,37 +85,48 @@
                                                 label="{{ __('Email') }}" placeholder="{{ __('Enter Email') }}"
                                                 value="{{ $doctor->email }}" required="true" />
                                         </div>
-@if($subscription?->hasEntitlement('services'))
-<div class="form-group col-12">
-    <label for="service_ids">{{ __('Services') }}</label>
-    <select id="service_ids" name="service_ids[]" class="form-control" multiple>
-        @foreach($services as $service)
-            <option value="{{ $service->id }}" @selected(in_array($service->id, old('service_ids', $doctor->services->pluck('id')->all())))>{{ $service->name }}</option>
-        @endforeach
-    </select>
-    @error('service_ids')<div class="text-danger">{{ $message }}</div>@enderror
-</div>
-@endif
-@if($subscription?->hasEntitlement('insurance'))
-<div class="form-group col-12">
-    <label for="accepted_insurance">{{ __('Accepted insurance') }}</label>
-    <input id="accepted_insurance" name="accepted_insurance" class="form-control" maxlength="2000" value="{{ old('accepted_insurance', $doctor->getTranslation($code)?->accepted_insurance) }}">
-</div>
-@endif
-                                        @if($subscription?->hasEntitlement('whatsapp'))
-                                            <div class="form-group col-md-4 {{ $isDefaultLanguage ? '' : 'd-none' }}">
-                                                <x-admin.form-input id="whatsapp" name="whatsapp" label="{{ __('WhatsApp') }}"
-                                                    placeholder="{{ __('Enter WhatsApp number') }}" value="{{ $doctor->whatsapp }}" />
+                                        @if($subscription?->hasEntitlement('services') && $services->isNotEmpty())
+                                            <div class="form-group col-12">
+                                                <label for="service_ids">{{ __('Services') }} <span class="text-danger">*</span></label>
+                                                <select id="service_ids" name="service_ids[]" class="form-control select2" multiple required>
+                                                    @foreach($services as $service)
+                                                        <option value="{{ $service->id }}" @selected(in_array($service->id, old('service_ids', $doctor->services->pluck('id')->all())))>{{ $service->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('service_ids')<div class="text-danger">{{ $message }}</div>@enderror
                                             </div>
                                         @endif
-                                        <div
-                                            class="form-group col-md-4 {{ $isDefaultLanguage ? '' : 'd-none' }}">
-                                            @if($subscription?->hasEntitlement('consultation_fee'))
-                                            <x-admin.form-input id="fee" name="fee" label="{{ __('Fee') }}"
-                                                placeholder="{{ __('Enter Fee') }}" value="{{ $doctor->fee }}"
-                                                required="true" />
+                                        @if($subscription?->hasEntitlement('insurance'))
+                                            <div class="form-group col-12">
+                                                <x-admin.form-input id="accepted_insurance" name="accepted_insurance"
+                                                    label="{{ __('Accepted insurance') }}" required="true"
+                                                    value="{{ old('accepted_insurance', $doctor->getTranslation($code)?->accepted_insurance) }}" />
+                                            </div>
+                                        @endif
+                                        @if($subscription?->hasEntitlement('whatsapp'))
+                                            <div class="form-group col-md-4">
+                                                <x-admin.form-input id="whatsapp" name="whatsapp" label="{{ __('WhatsApp') }}"
+                                                    placeholder="{{ __('Enter WhatsApp number') }}" value="{{ old('whatsapp', $doctor->whatsapp) }}" required="true" />
+                                            </div>
+                                        @endif
+                                        @if($subscription?->hasEntitlement('consultation_fee'))
+                                            <div class="form-group col-md-4">
+                                                <x-admin.form-input type="number" id="fee" name="fee" label="{{ __('Consultation fee (KES)') }}"
+                                                    min="0.01" step="0.01" value="{{ old('fee', $doctor->fee) }}" required="true" />
+                                            </div>
+                                        @endif
+                                        @foreach(['telemedicine' => ['telemedicine_available', __('Telemedicine availability')], 'emergency' => ['emergency_available', __('Emergency availability')], 'reviews' => ['reviews_enabled', __('Allow patient reviews')]] as $capability => [$field, $label])
+                                            @if($subscription?->hasEntitlement($capability))
+                                                <div class="form-group col-md-4">
+                                                    <input type="hidden" name="{{ $field }}" value="0">
+                                                    <label for="{{ $field }}">
+                                                        <input type="checkbox" id="{{ $field }}" name="{{ $field }}" value="1" @checked(old($field, $doctor->{$field} ?? ($field === 'reviews_enabled')))>
+                                                        {{ $label }}
+                                                    </label>
+                                                    @error($field)<div class="text-danger">{{ $message }}</div>@enderror
+                                                </div>
                                             @endif
-                                        </div>
+                                        @endforeach
                                         <div
                                             class="form-group col-md-4 {{ $isDefaultLanguage ? '' : 'd-none' }}">
                                             <x-admin.form-input id="years_of_experience" name="years_of_experience"
