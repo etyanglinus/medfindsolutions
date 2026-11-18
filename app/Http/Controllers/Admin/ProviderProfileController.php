@@ -64,14 +64,21 @@ class ProviderProfileController extends Controller
 
     /**
      * One click: approve, verify and publish. Refused with a plain message (never an error page)
-     * when the profile is incomplete or no approved, current licence is on file.
+     * when details are missing unless an admin explicitly allows an incomplete listing.
+     * An approved, current licence is always required.
      */
-    public function publish(ProviderProfile $profile): RedirectResponse
+    public function publish(Request $request, ProviderProfile $profile): RedirectResponse
     {
         $this->authorizeUpdate($profile);
+        $request->validate(['allow_incomplete_listing' => ['sometimes', 'boolean']]);
+        $allowIncomplete = $request->boolean('allow_incomplete_listing');
+        if ($allowIncomplete && $profile->status === ProviderProfile::STATUS_SUSPENDED) {
+            return back()->with(['message' => __('This provider is suspended.'), 'alert-type' => 'error']);
+        }
+
         $name = $profile->provider?->name;
         $onboarding = $profile->provider ? app(\App\Services\ProviderOnboardingService::class)->status($profile->provider, $profile->provider_type) : null;
-        if (!$onboarding || !$onboarding['complete']) {
+        if (!$onboarding || !$onboarding['document'] || (!$allowIncomplete && !$onboarding['complete'])) {
             $missing = $onboarding ? implode(', ', array_merge($onboarding['missing'], $onboarding['photo'] ? [] : [__('logo')], $onboarding['document'] ? [] : [__('licence document')])) : '';
             return back()->with(['message' => __(':name cannot be published yet: the profile is missing :missing.', ['name' => $name, 'missing' => $missing ?: __('required details')]), 'alert-type' => 'error']);
         }
