@@ -67,11 +67,11 @@ class ProviderProfileController extends Controller
      * when details are missing unless an admin explicitly allows an incomplete listing.
      * An approved, current licence is always required.
      */
-    public function publish(Request $request, ProviderProfile $profile): RedirectResponse
+    public function publish(ProviderProfile $profile, ?Request $request = null): RedirectResponse
     {
         $this->authorizeUpdate($profile);
-        $request->validate(['allow_incomplete_listing' => ['sometimes', 'boolean']]);
-        $allowIncomplete = $request->boolean('allow_incomplete_listing');
+        $request?->validate(['allow_incomplete_listing' => ['sometimes', 'boolean']]);
+        $allowIncomplete = $request?->boolean('allow_incomplete_listing') ?? false;
         if ($allowIncomplete && $profile->status === ProviderProfile::STATUS_SUSPENDED) {
             return back()->with(['message' => __('This provider is suspended.'), 'alert-type' => 'error']);
         }
