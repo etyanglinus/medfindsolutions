@@ -23,50 +23,8 @@ class DashboardController extends Controller {
 
     public function index(): View {
         $clinic = $this->clinic();
-        $subscription = app(SubscriptionAccessService::class)->activeClinicSubscription($clinic);
-        $days = in_array((int) request('days', 30), [7, 30, 90], true) ? (int) request('days', 30) : 30;
-        $insights = app(\App\Services\ListingInsightsService::class)->summary('clinic', $clinic, $days);
-
-        // Same metrics for the period before, for the "vs previous" change on each figure.
-        $previous = \App\Models\ListingEvent::where('provider_type', 'clinic')->where('provider_id', $clinic->id)
-            ->whereBetween('day', [now()->subDays(2 * $days - 1)->toDateString(), now()->subDays($days)->toDateString()])
-            ->selectRaw('event, COUNT(*) as total')->groupBy('event')->pluck('total', 'event');
-        $inquiries = \Modules\Doctor\app\Models\ProviderInquiry::where('provider_type', 'clinic')->where('provider_id', $clinic->id);
-        $enquiriesNow = (clone $inquiries)->where('created_at', '>=', now()->subDays($days - 1)->startOfDay())->count();
-        $enquiriesBefore = (clone $inquiries)->whereBetween('created_at', [now()->subDays(2 * $days - 1)->startOfDay(), now()->subDays($days - 1)->startOfDay()])->count();
-        $contacts = fn ($set) => (int) (($set['phone_click'] ?? 0) + ($set['whatsapp_click'] ?? 0) + ($set['website_click'] ?? 0));
-        $kpis = [
-            ['label' => __('Profile views'), 'icon' => 'fa-eye', 'tone' => 'blue', 'now' => $insights['totals']['profile_view'] ?? 0, 'before' => (int) ($previous['profile_view'] ?? 0)],
-            ['label' => __('Search appearances'), 'icon' => 'fa-search', 'tone' => 'violet', 'now' => $insights['totals']['search_appearance'] ?? 0, 'before' => (int) ($previous['search_appearance'] ?? 0)],
-            ['label' => __('Calls, WhatsApp & website clicks'), 'icon' => 'fa-phone-alt', 'tone' => 'green', 'now' => $contacts($insights['totals']), 'before' => $contacts($previous)],
-            ['label' => __('Enquiries'), 'icon' => 'fa-envelope-open-text', 'tone' => 'amber', 'now' => $enquiriesNow, 'before' => $enquiriesBefore],
-        ];
-        $chart = [
-            'labels' => collect($insights['labels'])->map(fn ($d) => Carbon::parse($d)->format('d M'))->values(),
-            'views' => $insights['series']['profile_view'] ?? [],
-            'contacts' => collect($insights['series']['phone_click'] ?? [])->map(fn ($v, $i) => $v + ($insights['series']['whatsapp_click'][$i] ?? 0) + ($insights['series']['website_click'][$i] ?? 0))->values(),
-        ];
-        $recentInquiries = (clone $inquiries)->latest()->take(4)->get();
-        $newInquiries = (clone $inquiries)->where('status', 'new')->count();
-
-        // Profile strength: what patients see on the public page.
-        $galleryCount = method_exists($clinic, 'galleryImages') ? $clinic->galleryImages()->count() : 0;
-        $servicesCount = \Illuminate\Support\Facades\Schema::hasTable('clinic_service') ? $clinic->services()->count() : 0;
-        $checklist = [
-            ['done' => filled($clinic->logo), 'label' => __('Logo or photo'), 'url' => route('clinic.edit-profile')],
-            ['done' => mb_strlen(trim(strip_tags((string) $clinic->description))) >= 80, 'label' => __('About text of at least two sentences'), 'url' => route('clinic.edit-profile')],
-            ['done' => filled($clinic->operating_hours), 'label' => __('Opening hours'), 'url' => route('clinic.edit-profile')],
-            ['done' => $servicesCount > 0 || filled($clinic->featured_services), 'label' => __('Services offered'), 'url' => route('clinic.edit-profile')],
-            ['done' => filled($clinic->insurance_accepted), 'label' => __('Insurance accepted'), 'url' => route('clinic.edit-profile')],
-            ['done' => $galleryCount > 0, 'label' => __('Gallery photos'), 'url' => route('clinic.content.index')],
-            ['done' => app(\App\Services\LicenceVerification::class)->hasValidLicence('clinic', $clinic->id), 'label' => __('Licence approved by MedFind'), 'url' => route('clinic.documents.index')],
-        ];
-        $strength = (int) round(100 * collect($checklist)->where('done', true)->count() / count($checklist));
-        $listing = app(\App\Services\PublicDirectory::class)->status('clinic', $clinic);
-        $daysLeft = $subscription?->expires_at ? max(0, (int) ceil(now()->diffInHours($subscription->expires_at, false) / 24)) : null;
-        $planDays = $subscription?->approved_at && $subscription?->expires_at ? max(1, $subscription->approved_at->diffInDays($subscription->expires_at)) : null;
-
-        return view('clinic.dashboard', compact('clinic', 'subscription', 'days', 'insights', 'kpis', 'chart', 'recentInquiries', 'newInquiries', 'checklist', 'strength', 'listing', 'daysLeft', 'planDays'));
+        $dash = app(\App\Services\ProviderDashboard::class)->build('clinic', $clinic, (int) request('days', 30));
+        return view('clinic.dashboard', ['clinic' => $clinic, 'dash' => $dash, 'subscription' => $dash['subscription']]);
     }
 
     public function subscriptionStatus(): View {
