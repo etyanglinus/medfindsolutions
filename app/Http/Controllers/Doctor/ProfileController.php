@@ -83,6 +83,8 @@ class ProfileController extends Controller {
             'seo_description' => 'nullable|string|max:2000',
 
         ];
+        // Everything the package shows publicly must be filled in (no placeholders on the live page).
+        $rules = app(\App\Services\ProfileRequirements::class)->rules('doctor', $doctor) + $rules;
         $customMessages = [
             'department_id.required'  => __('The department is required.'),
             'department_id.exists'    => __('The selected department is invalid.'),
@@ -121,7 +123,7 @@ class ProfileController extends Controller {
             'experience.required'     => __('Experience is required.'),
             'qualifications.required' => __('Qualifications is required.'),
         ];
-        $validatedData = $this->validate($request, $rules, $customMessages);
+        $validatedData = $this->validate($request, $rules, $customMessages + app(\App\Services\ProfileRequirements::class)->messages());
         $validatedData['code'] = $code;
         $nairobiLocationId = Location::whereHas('translations', fn ($query) => $query->where('name', 'Nairobi'))->value('id');
         if (! $nairobiLocationId) {

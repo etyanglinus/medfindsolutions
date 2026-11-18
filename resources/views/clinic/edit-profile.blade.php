@@ -4,6 +4,7 @@
 @endsection
 
 @section('clinic-content')
+@php $req = app(\App\Services\ProfileRequirements::class)->rules('clinic', $clinic); @endphp
 
 <div class="main-content">
 @include('provider.onboarding-notice')
@@ -68,14 +69,14 @@
 
                                     @if($subscription?->hasEntitlement('whatsapp'))
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold">{{ __('WhatsApp Number') }}</label>
-                                        <input type="text" name="whatsapp" class="form-control @error('whatsapp') is-invalid @enderror"
+                                        <label class="form-label fw-bold">{{ __('WhatsApp Number') }} @isset($req['whatsapp'])<span class="text-danger">*</span>@endisset</label>
+                                        <input type="text" name="whatsapp" @isset($req['whatsapp']) required @endisset class="form-control @error('whatsapp') is-invalid @enderror"
                                             value="{{ old('whatsapp', $clinic->whatsapp) }}"
                                             placeholder="+254 700 000 000">
                                         @error('whatsapp')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                     @endif
-                                    @if($subscription?->hasEntitlement('services_limit'))<div class="col-12"><label class="form-label fw-bold">{{ __('Services') }} ({{ __('limit: :count', ['count' => $subscription->entitlement('services_limit')]) }})</label><select name="services[]" class="form-control select2" multiple>@foreach($services as $service)<option value="{{ $service->id }}" @selected($clinic->services->contains('id', $service->id))>{{ $service->name }}</option>@endforeach</select><small class="text-muted">{{ __('Your package limit is enforced when saved.') }}</small></div>@endif
+                                    @if($subscription?->hasEntitlement('services_limit'))<div class="col-12"><label class="form-label fw-bold">{{ __('Services') }} @isset($req['services'])<span class="text-danger">*</span>@endisset ({{ __('limit: :count', ['count' => $subscription->entitlement('services_limit')]) }})</label><select name="services[]" class="form-control select2" multiple>@foreach($services as $service)<option value="{{ $service->id }}" @selected($clinic->services->contains('id', $service->id))>{{ $service->name }}</option>@endforeach</select><small class="text-muted">{{ __('Your package limit is enforced when saved.') }}</small>@error('services')<div class="text-danger small mt-1">{{ $message }}</div>@enderror</div>@endif
                                     @if($subscription?->hasEntitlement('emergency'))<div class="col-md-6"><label><input type="checkbox" name="emergency_available" value="1" @checked(old('emergency_available', $clinic->emergency_available))> {{ __('Emergency availability') }}</label></div>@endif
                                     @if($subscription?->hasEntitlement('reviews'))<div class="col-md-6"><label><input type="checkbox" name="reviews_enabled" value="1" @checked(old('reviews_enabled', $clinic->reviews_enabled))> {{ __('Allow provider reviews') }}</label></div>@endif
                                     <div class="col-md-6">
@@ -86,8 +87,8 @@
 
                                     @if($subscription?->hasEntitlement('operating_hours'))
                                     <div class="col-md-6">
-                                        <label class="form-label fw-bold">{{ __('Operating Hours') }}</label>
-                                        <input type="text" name="operating_hours" class="form-control @error('operating_hours') is-invalid @enderror"
+                                        <label class="form-label fw-bold">{{ __('Operating Hours') }} @isset($req['operating_hours'])<span class="text-danger">*</span>@endisset</label>
+                                        <input type="text" name="operating_hours" @isset($req['operating_hours']) required @endisset class="form-control @error('operating_hours') is-invalid @enderror"
                                             value="{{ old('operating_hours', $clinic->operating_hours) }}"
                                             placeholder="{{ __('e.g. Mon–Fri 8am–6pm') }}">
                                         @error('operating_hours')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -96,8 +97,8 @@
 
                                     @if($subscription?->hasEntitlement('insurance'))
                                     <div class="col-12">
-                                        <label class="form-label fw-bold">{{ __('Insurance Accepted') }}</label>
-                                        <input type="text" name="insurance_accepted" class="form-control @error('insurance_accepted') is-invalid @enderror"
+                                        <label class="form-label fw-bold">{{ __('Insurance Accepted') }} @isset($req['insurance_accepted'])<span class="text-danger">*</span>@endisset</label>
+                                        <input type="text" name="insurance_accepted" @isset($req['insurance_accepted']) required @endisset class="form-control @error('insurance_accepted') is-invalid @enderror"
                                             value="{{ old('insurance_accepted', $clinic->insurance_accepted) }}"
                                             placeholder="{{ __('e.g. NHIF, AAR, Jubilee') }}">
                                         @error('insurance_accepted')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -116,7 +117,7 @@
 
                                     <div class="col-12">
                                         <label class="form-label fw-bold">{{ __('About') }} <span class="text-danger">*</span></label>
-                                        <textarea name="description" rows="4"
+                                        <textarea name="description" rows="4" minlength="{{ \App\Services\ProfileRequirements::MIN_ABOUT }}"
                                             class="form-control @error('description') is-invalid @enderror"
                                             placeholder="{{ __('Enter About Information') }}" required>{{ old('description', $clinic->description) }}</textarea>
                                         @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror

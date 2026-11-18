@@ -19,6 +19,7 @@ use Tests\TestCase;
 class ManualPaymentAndListingTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CompletesProviderProfiles;
 
     protected function setUp(): void
     {
@@ -39,6 +40,7 @@ class ManualPaymentAndListingTest extends TestCase
         $department = DB::table('departments')->insertGetId(['slug' => 'dept-'.$slug, 'status' => 1]);
         $location = DB::table('locations')->insertGetId(['status' => 1]);
         $doctor = Doctor::create(['department_id' => $department, 'location_id' => $location, 'name' => ucfirst($slug), 'slug' => $slug, 'email' => "$slug@example.test", 'phone' => '0700', 'password' => bcrypt('x'), 'status' => 1, 'email_verified_at' => $emailConfirmed ? now() : null]);
+        $this->completeDoctor($doctor);
         if ($expires) $doctor->subscriptions()->create(['package_name' => 'Basic', 'plan_code' => 'basic', 'package_price' => 1000, 'plan_duration' => 1, 'payment_method' => 'paystack', 'status' => 'approved', 'approved_at' => now()->subMonth(),
             'expires_at' => now()->modify($expires), 'transaction_code' => "T-$slug", 'entitlements' => $entitlements]);
         return $doctor;

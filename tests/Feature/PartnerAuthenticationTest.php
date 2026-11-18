@@ -20,6 +20,7 @@ class PartnerAuthenticationTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Storage::fake('public'); // sign-up logos
         config(['app.app_mode' => 'LIVE']);
         config(['app.url' => 'http://localhost']);
         \Illuminate\Support\Facades\URL::forceRootUrl('http://localhost');
@@ -85,7 +86,8 @@ class PartnerAuthenticationTest extends TestCase
 
     private function registrationData(string $email): array
     {
-        return ['name' => 'Example Partner', 'email' => $email, 'phone' => '0700000000', 'password' => 'password', 'password_confirmation' => 'password'];
+        // A logo is compulsory at sign-up, so every listing has one from day one.
+        return ['name' => 'Example Partner', 'email' => $email, 'phone' => '0700000000', 'password' => 'password', 'password_confirmation' => 'password', 'logo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png', 300, 270)];
     }
 
     private function createSchool(string $email, array $attributes = []): HealthcareInstitution

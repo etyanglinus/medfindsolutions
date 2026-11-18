@@ -25,11 +25,11 @@ class ListingInsightsTest extends TestCase {
         if ($type === 'doctor') $values += ['department_id' => \Modules\Doctor\app\Models\Department::create(['slug' => 'specialty'])->id, 'location_id' => \Modules\Doctor\app\Models\Location::create(['status' => 1])->id];
         if ($type === 'doctor') $values += ['years_of_experience' => '1', 'image' => 'photo.png'];
         else $values += ['logo' => 'logo.png'];
-        if ($type === 'clinic') $values += ['specialty' => 'Facility', 'licensing_body' => 'Body', 'description' => 'About', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications'];
-        if ($type === 'school') $values += ['institution_type' => 'College', 'ownership' => 'Private', 'about' => 'About', 'location' => 'Nairobi'];
-        if ($type === 'supplier') $values += ['description' => 'About', 'address' => 'Nairobi'];
+        if ($type === 'clinic') $values += ['specialty' => 'Facility', 'licensing_body' => 'Body', 'description' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications'];
+        if ($type === 'school') $values += ['institution_type' => 'College', 'ownership' => 'Private', 'about' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'location' => 'Nairobi'];
+        if ($type === 'supplier') $values += ['description' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi'];
         $client->forceFill($values)->save();
-        if ($type === 'doctor') $client->translations()->create(['lang_code' => 'en', 'licensing_body' => 'Body', 'about' => 'About', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications']);
+        if ($type === 'doctor') $client->translations()->create(['lang_code' => 'en', 'licensing_body' => 'Body', 'about' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications']);
         \Modules\Doctor\app\Models\ProviderDocument::create(['provider_type' => $type, 'provider_id' => $client->id, 'licensing_body' => 'Body', 'registration_number' => 'REG123', 'file_path' => 'proof.pdf', 'status' => 'pending']);
         return $client;
     }

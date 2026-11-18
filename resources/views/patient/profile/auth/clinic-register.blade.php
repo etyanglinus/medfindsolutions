@@ -32,7 +32,7 @@
                         </div>
 
                         <div class="regiser-form login-form">
-                            <form action="{{ route('clinic.register') }}" method="POST">
+                            <form action="{{ route('clinic.register') }}" method="POST" enctype="multipart/form-data">
                                 @csrf
                                 <div class="row g-3">
                                     <div class="col-12">
@@ -70,6 +70,8 @@
                                             value="{{ old('phone') }}">
                                         @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
+
+                                    @include('patient.profile.auth.partials.photo-field', ['field' => 'logo', 'id' => 'clinic_logo', 'label' => __('Facility logo or photo')])
 
                                     <div class="col-md-6">
                                         <label for="password">{{ __('Password') }} <span class="text-danger">*</span></label>

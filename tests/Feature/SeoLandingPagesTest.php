@@ -19,6 +19,7 @@ use Tests\TestCase;
 class SeoLandingPagesTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CompletesProviderProfiles;
 
     private int $cardiology;
 
@@ -35,6 +36,7 @@ class SeoLandingPagesTest extends TestCase
         $location = DB::table('locations')->insertGetId(['status' => 1]);
         $doctor = Doctor::create(['department_id' => $this->cardiology, 'location_id' => $location, 'name' => ucfirst($slug), 'slug' => $slug, 'email' => "$slug@example.test", 'phone' => '0700', 'password' => 'x', 'status' => 1, 'email_verified_at' => now()]);
         DB::table('doctor_translations')->insert(['doctor_id' => $doctor->id, 'lang_code' => 'en', 'address' => $address]);
+        $this->completeDoctor($doctor);
         $doctor->subscriptions()->create(['package_name' => 'Basic', 'plan_code' => 'basic', 'package_price' => 1000, 'plan_duration' => 1, 'payment_method' => 'paystack', 'status' => 'approved', 'approved_at' => now()->subDay(),
             'expires_at' => $listed ? now()->addMonth() : now()->subDay(), 'transaction_code' => "T-$slug", 'entitlements' => ['search_visibility' => true]]);
         return $doctor;
@@ -63,6 +65,7 @@ class SeoLandingPagesTest extends TestCase
     public function test_facility_and_supplier_county_pages(): void
     {
         $clinic = Clinic::create(['name' => 'Kilimani Clinic', 'slug' => 'kilimani-clinic', 'email' => 'k@example.test', 'phone' => '0700', 'password' => 'x', 'status' => 1, 'location' => 'Kilimani, Nairobi']);
+        $this->completeClinic($clinic);
         $clinic->subscriptions()->create(['package_name' => 'Basic', 'plan_code' => 'basic', 'package_price' => 3000, 'plan_duration' => 1, 'payment_method' => 'paystack', 'status' => 'approved', 'approved_at' => now()->subDay(), 'expires_at' => now()->addMonth(), 'transaction_code' => 'T-k', 'entitlements' => ['search_visibility' => true]]);
         $supplier = MedicalSupplier::create(['name' => 'Kiambu Supplies', 'slug' => 'kiambu-supplies', 'official_email' => 's@example.test', 'password' => 'x', 'counties_served' => ['Kiambu', 'Nairobi']]);
         $profile = ProviderProfile::create(['provider_type' => 'supplier', 'provider_id' => $supplier->id, 'status' => 'published', 'published_at' => now()]);

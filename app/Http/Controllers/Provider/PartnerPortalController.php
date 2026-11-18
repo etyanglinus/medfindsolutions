@@ -67,7 +67,9 @@ class PartnerPortalController extends Controller
         [$record, $profile, , $entitlements] = $this->context($type);
         abort_if(! $this->portal->subscription($profile), 403, __('An active package is required to edit the public profile.'));
         $schema = $type === 'school' ? 'healthcare_institutions' : 'medical_suppliers';
-        $data = $request->validate([
+        // The supplier form's description box is named "about"; validate it as the description it is.
+        if ($type === 'supplier' && $request->filled('about') && ! $request->filled('description')) $request->merge(['description' => $request->input('about')]);
+        $data = $request->validate(app(\App\Services\ProfileRequirements::class)->rules($type, $record, $entitlements) + [
             'name' => ['required', 'string', 'max:255'],
             'contact_person' => ['nullable', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:40'],
@@ -106,7 +108,8 @@ class PartnerPortalController extends Controller
             'promotional_banner_ends_at' => ['nullable', 'date', 'after_or_equal:today'],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => ['integer', 'distinct', Rule::exists('medical_supplier_categories', 'id')->where('is_active', true)],
-        ]);
+        // Plan rules come first so they win: everything the package shows publicly must be filled in.
+        ], app(\App\Services\ProfileRequirements::class)->messages());
         if ($type === 'supplier' && isset($data['about'])) { $data['description'] = $data['about']; unset($data['about']); }
         foreach ($data as $field => $value) {
             if (! in_array($field, ['name', 'contact_person', 'phone', 'logo', 'cover_image', 'category_ids', 'gallery_images', 'remove_gallery_images', 'promotional_banner_file'], true)

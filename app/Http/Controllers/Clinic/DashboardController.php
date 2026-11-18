@@ -52,7 +52,7 @@ class DashboardController extends Controller {
                 ->with(['message' => __('An active subscription is required to update this profile.'), 'alert-type' => 'error']);
         }
 
-        $data = $request->validate([
+        $data = $request->validate(app(\App\Services\ProfileRequirements::class)->rules('clinic', $clinic) + [
             'name'     => 'required|string|max:255',
             'phone'    => 'required|string|max:30',
             'whatsapp' => 'nullable|string|max:30',
@@ -78,7 +78,8 @@ class DashboardController extends Controller {
             'services' => 'nullable|array',
             'services.*' => 'integer|distinct|exists:services,id',
             'logo'     => ($clinic->logo ? 'nullable' : 'required').'|image|mimes:jpg,jpeg,png,webp|max:2048',
-        ]);
+        // Plan rules come first so they win: everything the package shows publicly must be filled in.
+        ], app(\App\Services\ProfileRequirements::class)->messages());
 
         $data['emergency_available'] = $request->boolean('emergency_available');
         $data['reviews_enabled'] = $request->boolean('reviews_enabled');

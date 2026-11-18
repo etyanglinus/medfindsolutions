@@ -19,6 +19,7 @@ use Tests\TestCase;
 class TafutaTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CompletesProviderProfiles;
 
     private object $api;
 
@@ -61,6 +62,7 @@ class TafutaTest extends TestCase
         $location = DB::table('locations')->insertGetId(['status' => 1]);
         $doctor = Doctor::create(['department_id' => $department, 'location_id' => $location, 'name' => ucwords(str_replace('-', ' ', $slug)), 'slug' => $slug, 'email' => "$slug@example.test", 'phone' => '0700', 'password' => 'x', 'status' => 1, 'fee' => 3000]);
         DB::table('doctor_translations')->insert(['doctor_id' => $doctor->id, 'lang_code' => 'en', 'address' => $address, 'accepted_insurance' => 'SHA, AAR']);
+        $this->completeDoctor($doctor);
         $doctor->subscriptions()->create(['package_name' => 'Premium', 'plan_code' => 'premium', 'package_price' => 3500, 'plan_duration' => 3, 'payment_method' => 'paystack', 'status' => 'approved', 'approved_at' => now()->subDay(),
             'expires_at' => $listed ? now()->addMonth() : now()->subDay(), 'transaction_code' => "T-$slug", 'entitlements' => ['search_visibility' => true, 'consultation_fee' => true]]);
         return $doctor;

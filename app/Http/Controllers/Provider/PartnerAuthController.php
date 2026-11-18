@@ -36,9 +36,18 @@ class PartnerAuthController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique($table, 'official_email')],
             'phone' => ['required', 'string', 'max:40'],
             'password' => ['required', 'confirmed', 'min:8', 'max:100'],
-        ], ['email.unique' => __('An account with this email already exists. Please log in, or use "Forgot password" if you cannot remember your password.')]);
+            'logo' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ], [
+            'email.unique' => __('An account with this email already exists. Please log in, or use "Forgot password" if you cannot remember your password.'),
+            'logo.required' => __('Please upload your logo.'),
+            'logo.image' => __('The logo must be an image (JPG, PNG or WebP).'),
+            'logo.mimes' => __('The logo must be a JPG, PNG or WebP image.'),
+            'logo.max' => __('The logo must be 2 MB or smaller.'),
+        ]);
+        // Required at sign-up: every listing has a logo from day one (same storage as the profile page).
+        $logoPath = $request->file('logo')->storePublicly('partner-logos', 'public');
 
-        $record = DB::transaction(function () use ($validated, $definition, $type) {
+        $record = DB::transaction(function () use ($validated, $definition, $type, $logoPath) {
             $model = $definition['model'];
             $record = $model::create([
                 'name' => $validated['name'],
@@ -48,6 +57,7 @@ class PartnerAuthController extends Controller
                 'password' => Hash::make($validated['password']),
                 'registration_token' => Str::random(80),
                 'email_verified_token' => Str::random(80),
+                'logo' => $logoPath,
             ]);
 
             $profile = ProviderProfile::create([
