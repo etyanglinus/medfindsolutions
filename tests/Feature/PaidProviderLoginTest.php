@@ -34,6 +34,8 @@ class PaidProviderLoginTest extends TestCase
         $this->withoutMiddleware([\App\Http\Middleware\DemoModeMiddleware::class, \App\Http\Middleware\SetLocaleMiddleware::class, \App\Http\Middleware\MaintenanceModeMiddleware::class, \App\Http\Middleware\TrackSiteVisit::class]);
         DB::table('basic_payments')->insert([['key' => 'paystack_status', 'value' => 'active'], ['key' => 'paystack_secret_key', 'value' => 'test-secret']]);
         SubscriptionPaymentSetting::create(['is_active' => true, 'bank_name' => 'Equity Bank', 'paybill_number' => '247247', 'account_number' => '0123456789']);
+        // Like the live site: services exist, so facility plans with a services limit load the facility-service link.
+        \Illuminate\Support\Facades\DB::table('services')->insert(['name' => 'X-ray', 'slug' => 'x-ray', 'status' => 1, 'created_at' => now(), 'updated_at' => now()]);
     }
 
     /** A freshly registered account: just what the sign-up form collects. */
@@ -49,9 +51,9 @@ class PaidProviderLoginTest extends TestCase
         return [$client, $email];
     }
 
-    private function pay(string $method, $client, string $type): void
+    private function pay(string $method, $client, string $type, ?string $plan = null): void
     {
-        $plan = app(\Modules\Doctor\app\Services\SubscriptionPlanService::class)->for($type)[0]['id'];
+        $plan ??= app(\Modules\Doctor\app\Services\SubscriptionPlanService::class)->for($type)[0]['id'];
         if ($method === 'paystack') {
             $service = app(ProviderPaystackService::class);
             $payment = $service->createAttempt($client, $type, $plan);
@@ -83,8 +85,11 @@ class PaidProviderLoginTest extends TestCase
         ];
         foreach (['paystack', 'paybill', 'admin'] as $method) {
             foreach ($pages as $type => $routes) {
-                [$client, $email] = $this->newClient($type, $method);
-                $this->pay($method, $client, $type);
+              // Every plan with Paystack: higher plans unlock profile sections (e.g. facility services) that lower ones never load.
+              $plans = $method === 'paystack' ? array_column(app(\Modules\Doctor\app\Services\SubscriptionPlanService::class)->for($type), 'id') : [null];
+              foreach ($plans as $plan) {
+                [$client, $email] = $this->newClient($type, $method.($plan ? "-$plan" : ''));
+                $this->pay($method, $client, $type, $plan);
                 $this->assertTrue($client->fresh()->exists);
 
                 $response = $this->login($type, $email);
@@ -103,6 +108,7 @@ class PaidProviderLoginTest extends TestCase
                 }
                 auth($type)->logout();
                 $this->flushSession();
+              }
             }
         }
     }
@@ -139,6 +145,30 @@ class PaidProviderLoginTest extends TestCase
             }
             auth($type)->logout();
             $this->flushSession();
+        }
+    }
+
+    public function test_passwords_with_special_characters_work_including_ones_saved_by_the_old_filter(): void
+    {
+        foreach (['doctor', 'school'] as $type) {
+            [$client, $email] = $this->newClient($type, 'symbols');
+            $this->pay('admin', $client, $type);
+            $url = in_array($type, ['doctor', 'clinic']) ? route($type.'.login') : route('website.partner.login.store', ['type' => $type]);
+
+            // A password with "<" works exactly as typed.
+            $client->forceFill(['password' => bcrypt('Ab<cd>12&x')])->save();
+            $this->post($url, ['email' => $email, 'password' => 'Ab<cd>12&x']);
+            $this->assertTrue(auth($type)->check(), "$type: password with < signs in");
+            auth($type)->logout(); $this->flushSession();
+
+            // Saved through the old filter ("Ab12&x"): still signs in with what the person typed, and the real password replaces it.
+            $client->forceFill(['password' => bcrypt(\App\Support\PasswordInput::legacyFiltered('Ab<cd>12&x'))])->save();
+            $this->post($url, ['email' => $email, 'password' => 'Ab<cd>12&x']);
+            $this->assertTrue(auth($type)->check(), "$type: old-filter password signs in");
+            $this->assertTrue(\Illuminate\Support\Facades\Hash::check('Ab<cd>12&x', $client->fresh()->password), "$type: real password saved");
+            auth($type)->logout(); $this->flushSession();
+            $this->post($url, ['email' => $email, 'password' => 'wrong<password']);
+            $this->assertFalse(auth($type)->check(), "$type: wrong password still refused");
         }
     }
 

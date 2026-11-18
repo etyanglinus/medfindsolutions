@@ -83,6 +83,9 @@ class PartnerAuthController extends Controller
         $definition = $this->definition($type);
         $credentials = $request->validate(['email' => ['required', 'email'], 'password' => ['required', 'string']]);
 
+        // Accepts (once) a password saved through the old input filter, then stores the real one.
+        $record = auth($definition['guard'])->getProvider()->retrieveByCredentials(['official_email' => $credentials['email']]);
+        if ($record) \App\Support\PasswordInput::verify($record, $credentials['password']);
         if (! auth($definition['guard'])->attempt(['official_email' => $credentials['email'], 'password' => $credentials['password']])) {
             return back()->withErrors(['email' => __('The supplied credentials are incorrect.')])->withInput($request->only('email'));
         }

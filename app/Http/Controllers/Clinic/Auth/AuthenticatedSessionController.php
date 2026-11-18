@@ -55,7 +55,7 @@ class AuthenticatedSessionController extends Controller {
                 ->with(['message' => __('Your subscription has expired. Please renew to access your account.'), 'alert-type' => 'error']);
         }
 
-        if (! Hash::check($request->password, $clinic->password)) {
+        if (! \App\Support\PasswordInput::verify($clinic, $request->password)) {
             return redirect()->route('login', ['type' => 'clinic'])
                 ->with(['message' => __('Invalid credentials.'), 'alert-type' => 'error']);
         }
