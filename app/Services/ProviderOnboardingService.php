@@ -23,6 +23,9 @@ class ProviderOnboardingService
             $complete = $translations->contains(fn ($row) => collect($required)->every(fn ($field) => $this->hasContent($row->$field)));
             if (!$complete) $missing[] = __('Professional profile details');
         }
+        // Sections the package shows publicly (and a real description) are required too.
+        foreach (app(ProfileRequirements::class)->missing($type, $client) as $label) $missing[] = $label;
+        $missing = array_values(array_unique($missing));
         $photo = $type === 'doctor' ? filled($client->image) : filled($client->logo);
         $document = ProviderDocument::where('provider_type', $type)->where('provider_id', $client->id)
             ->whereIn('status', ['pending', 'approved'])->whereNotNull('file_path')->where('file_path', '!=', '')->exists();

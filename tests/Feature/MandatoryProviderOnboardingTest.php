@@ -21,11 +21,11 @@ class MandatoryProviderOnboardingTest extends TestCase
         $client = new $model;
         $values = ['name' => 'Client', 'slug' => $type.'-client', 'phone' => '0700000000', 'password' => bcrypt('password'), 'email_verified_at' => now(), $type === 'doctor' || $type === 'clinic' ? 'email' : 'official_email' => $type.'@example.test'];
         if ($type === 'doctor') $values += ['department_id' => \Modules\Doctor\app\Models\Department::create(['slug' => 'specialty'])->id, 'location_id' => \Modules\Doctor\app\Models\Location::create(['status' => 1])->id, 'years_of_experience' => '0'];
-        if ($type === 'clinic') $values += ['specialty' => 'Facility', 'licensing_body' => 'Body', 'description' => 'About', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications'];
-        if ($type === 'school') $values += ['institution_type' => 'College', 'ownership' => 'Private', 'about' => 'About', 'location' => 'Nairobi'];
-        if ($type === 'supplier') $values += ['description' => 'About', 'address' => 'Nairobi'];
+        if ($type === 'clinic') $values += ['specialty' => 'Facility', 'licensing_body' => 'Body', 'description' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications'];
+        if ($type === 'school') $values += ['institution_type' => 'College', 'ownership' => 'Private', 'about' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'location' => 'Nairobi'];
+        if ($type === 'supplier') $values += ['description' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi'];
         $client->forceFill($values)->save();
-        if ($type === 'doctor') $client->translations()->create(['lang_code' => 'en', 'licensing_body' => 'Body', 'about' => 'About', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications']);
+        if ($type === 'doctor') $client->translations()->create(['lang_code' => 'en', 'licensing_body' => 'Body', 'about' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi', 'educations' => 'Education', 'experience' => 'Experience', 'qualifications' => 'Qualifications']);
         return $client;
     }
 
@@ -60,8 +60,8 @@ class MandatoryProviderOnboardingTest extends TestCase
             if ($type === 'doctor') $client->translations()->update(['about' => '<p><br>&nbsp;</p>']);
             else $client->forceFill([$type === 'school' ? 'about' : 'description' => '<p><br>&nbsp;</p>'])->save();
             $this->assertFalse($service->status($client, $type)['complete']);
-            if ($type === 'doctor') $client->translations()->update(['about' => 'About']);
-            else $client->forceFill([$type === 'school' ? 'about' : 'description' => 'About'])->save();
+            if ($type === 'doctor') $client->translations()->update(['about' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.']);
+            else $client->forceFill([$type === 'school' ? 'about' : 'description' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.'])->save();
             $document->update(['status' => 'rejected']);
             $this->assertFalse($service->status($client, $type)['complete']);
         }
@@ -114,7 +114,15 @@ class MandatoryProviderOnboardingTest extends TestCase
             $service->settle(['reference' => $payment->gateway_reference, 'status' => 'success', 'amount' => (int) round($payment->amount * 100), 'currency' => 'KES', 'customer' => ['email' => $type.'@example.test']]);
             $this->actingAs($client->fresh(), $type);
             $data = ['name' => 'Client', 'phone' => '0700000000'];
-            $data += $type === 'school' ? ['institution_type' => 'College', 'ownership' => 'Private', 'about' => 'Our healthcare college', 'location' => 'Nairobi'] : ['description' => 'Our healthcare supplies', 'address' => 'Nairobi headquarters'];
+            $about = 'A healthcare organisation serving patients and professionals across Kenya with quality, affordable services.';
+            $data += $type === 'school' ? ['institution_type' => 'College', 'ownership' => 'Private', 'about' => $about, 'location' => 'Nairobi'] : ['about' => $about, 'address' => 'Nairobi headquarters'];
+            // Everything the package shows publicly is compulsory (WhatsApp, website, counties, categories...).
+            $data += ['whatsapp' => '0700000001', 'website' => 'https://example.test'];
+            if ($type === 'supplier') {
+                $category = \Modules\MedicalSupplier\app\Models\SupplierCategory::create(['name' => 'Diagnostics', 'slug' => 'diagnostics', 'is_active' => true]);
+                $data += ['counties_served' => ['Nairobi'], 'category_ids' => [$category->id]];
+                $this->putJson(route('website.partner.profile.update', ['type' => $type]), array_diff_key($data, ['counties_served' => 1]))->assertJsonValidationErrors('counties_served');
+            }
             $url = route('website.partner.profile.update', ['type' => $type]);
             $this->putJson($url, $data)->assertUnprocessable()->assertJsonValidationErrors('logo');
             $data['logo'] = \Illuminate\Http\UploadedFile::fake()->createWithContent('logo.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6GygAAAAASUVORK5CYII='));

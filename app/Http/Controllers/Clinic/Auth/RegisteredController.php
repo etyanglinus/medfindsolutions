@@ -35,6 +35,7 @@ class RegisteredController extends Controller {
             'email'     => ['required', 'string', 'email', 'max:255', 'unique:clinics,email'],
             'phone'     => ['required', 'string', 'max:30'],
             'password'  => ['required', 'confirmed', 'min:4', 'max:100'],
+            'logo'      => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ], [
             'name.required'      => __('Clinic name is required.'),
             'specialty.required' => __('Specialty is required.'),
@@ -44,6 +45,10 @@ class RegisteredController extends Controller {
             'password.required'  => __('Password is required.'),
             'password.confirmed' => __('Confirm password does not match.'),
             'password.min'       => __('Password must be at least 4 characters.'),
+            'logo.required'      => __('Please upload your facility logo or a photo.'),
+            'logo.image'         => __('The logo must be an image (JPG, PNG or WebP).'),
+            'logo.mimes'         => __('The logo must be a JPG, PNG or WebP image.'),
+            'logo.max'           => __('The logo must be 2 MB or smaller.'),
         ]);
 
         DB::beginTransaction();
@@ -62,6 +67,8 @@ class RegisteredController extends Controller {
                 'status'             => 0,
                 'password'           => Hash::make($request->password),
                 'registration_token' => Str::random(100),
+                // Required at sign-up: every listing has a photo from day one.
+                'logo'               => uploadAndOptimizeImage(file: $request->file('logo')),
             ]);
 
             DB::commit();

@@ -25,6 +25,7 @@ class UnfinishedSignupTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        \Illuminate\Support\Facades\Storage::fake('public'); // sign-up logos
         config(['app.app_mode' => 'LIVE']);
         $this->withoutMiddleware(DemoModeMiddleware::class);
         Configuration::create(['config' => 'setup_complete', 'value' => 1]);
@@ -37,7 +38,7 @@ class UnfinishedSignupTest extends TestCase
 
     private function registerSupplier(string $email = 'retry@supplier.test', string $name = 'Retry Supplier')
     {
-        return $this->post(route('website.partner.register.store', 'supplier'), ['name' => $name, 'email' => $email, 'phone' => '0700000000', 'password' => 'password', 'password_confirmation' => 'password']);
+        return $this->post(route('website.partner.register.store', 'supplier'), ['name' => $name, 'email' => $email, 'phone' => '0700000000', 'password' => 'password', 'password_confirmation' => 'password', 'logo' => \Illuminate\Http\UploadedFile::fake()->image('logo.png', 300, 270)]);
     }
 
     private function clinic(array $attributes = []): Clinic

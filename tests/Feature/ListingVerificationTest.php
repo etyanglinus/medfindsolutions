@@ -21,6 +21,7 @@ use Tests\TestCase;
 class ListingVerificationTest extends TestCase
 {
     use RefreshDatabase;
+    use \Tests\Concerns\CompletesProviderProfiles;
 
     protected function setUp(): void
     {
@@ -35,6 +36,7 @@ class ListingVerificationTest extends TestCase
         $department = DB::table('departments')->insertGetId(['slug' => 'cardiologist', 'status' => 1]);
         $location = DB::table('locations')->insertGetId(['status' => 1]);
         $doctor = Doctor::create(['department_id' => $department, 'location_id' => $location, 'name' => 'Dr Licence', 'slug' => 'dr-licence', 'email' => 'dr@example.test', 'phone' => '0700', 'password' => 'x', 'status' => 1, 'email_verified_at' => now()]);
+        $this->completeDoctor($doctor);
         $doctor->subscriptions()->create(['package_name' => 'Basic', 'plan_code' => 'basic', 'package_price' => 1000, 'plan_duration' => 1, 'payment_method' => 'paystack', 'status' => 'approved', 'approved_at' => now()->subDay(), 'expires_at' => now()->addMonth(), 'transaction_code' => 'T1', 'entitlements' => ['search_visibility' => true]]);
         return $doctor;
     }
@@ -94,7 +96,7 @@ class ListingVerificationTest extends TestCase
         $admin = new Admin;
         $admin->forceFill(['name' => 'Owner', 'email' => 'owner@example.test', 'password' => bcrypt('x'), 'status' => 'active', 'is_super_admin' => 1])->save();
         $this->actingAs($admin, 'admin');
-        $supplier = MedicalSupplier::create(['name' => 'Supplier', 'slug' => 'supplier', 'official_email' => 'sup@example.test', 'password' => 'x', 'description' => 'd', 'address' => 'Nairobi', 'logo' => 'logo.png', 'phone' => '0700']);
+        $supplier = MedicalSupplier::create(['name' => 'Supplier', 'slug' => 'supplier', 'official_email' => 'sup@example.test', 'password' => 'x', 'description' => 'We offer friendly, professional care for patients and families, with clear advice and fair, transparent prices.', 'address' => 'Nairobi', 'logo' => 'logo.png', 'phone' => '0700']);
         $profile = ProviderProfile::create(['provider_type' => 'supplier', 'provider_id' => $supplier->id, 'status' => 'approved']);
         $supplier->update(['provider_profile_id' => $profile->id]);
         $this->licence('supplier', $supplier->id, 'pending', null);

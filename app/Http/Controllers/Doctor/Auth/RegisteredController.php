@@ -46,6 +46,7 @@ class RegisteredController extends Controller {
             'password'                 => ['required', 'confirmed', 'min:4', 'max:100'],
             'department_id'            => 'sometimes|exists:departments,id',
             'location_id'              => 'sometimes|exists:locations,id',
+            'image'                    => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'g-recaptcha-response'     => $setting->recaptcha_status == 'active' ? ['required', new CustomRecaptcha()] : '',
         ], [
             'name.required'                        => __('Name is required'),
@@ -61,6 +62,10 @@ class RegisteredController extends Controller {
             'password.min'                         => __('You have to provide minimum 4 character password'),
             'department_id.exists'                 => __('The selected department is invalid.'),
             'location_id.exists'                   => __('The selected location is invalid.'),
+            'image.required'                       => __('Please upload a profile photo.'),
+            'image.image'                          => __('The profile photo must be an image (JPG, PNG or WebP).'),
+            'image.mimes'                          => __('The profile photo must be a JPG, PNG or WebP image.'),
+            'image.max'                            => __('The profile photo must be 2 MB or smaller.'),
             'g-recaptcha-response.required'        => __('Please complete the recaptcha to submit the form'),
         ]);
 
@@ -100,6 +105,9 @@ class RegisteredController extends Controller {
                 'email_verified_token'   => Str::random(100),
                 'registration_token'     => Str::random(100),
             ]);
+
+            // Required at sign-up: every listing has a photo from day one.
+            $doctor->forceFill(['image' => uploadAndOptimizeImage(file: $request->file('image'))])->save();
 
             $request->merge([
                 'licensing_body'     => $licensingBodyName,
