@@ -66,6 +66,8 @@ Route::group(['as' => 'admin.', 'prefix' => 'admin', 'middleware' => ['auth:admi
     Route::resource('facility', FacilityController::class)->names('facility');
     Route::put('/facility/status-update/{id}', [FacilityController::class, 'statusUpdate'])->name('facility.status-update');
     Route::resource('clinic-listings', ClinicAdminController::class)->only(['index', 'edit', 'update', 'destroy'])->names('clinic-listing');
+    Route::put('listing-completeness/{type}/{id}', \App\Http\Controllers\Admin\IncompleteListingController::class)
+        ->whereIn('type', ['doctor', 'clinic'])->whereNumber('id')->name('listing-completeness.update');
     Route::get('provider-messages', [ProviderMessageController::class, 'index'])->name('provider-messages.index');
     Route::post('provider-messages', [ProviderMessageController::class, 'store'])->name('provider-messages.store');
     Route::get('provider-documents', [ProviderDocumentController::class, 'adminIndex'])->name('provider-documents.index');
