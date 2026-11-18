@@ -42,7 +42,7 @@ class AuthenticatedSessionController extends Controller {
                 ->with(['message' => __('Invalid Credentials'), 'alert-type' => 'error']);
         }
 
-        if (! Hash::check($request->password, $doctor->password)) {
+        if (! \App\Support\PasswordInput::verify($doctor, $request->password)) {
             return redirect()->route('login', ['type' => 'doctor'])
                 ->with(['message' => __('Invalid Credentials'), 'alert-type' => 'error']);
         }

@@ -54,7 +54,7 @@ class AuthenticatedSessionController extends Controller
                 if ($admin->must_change_password && (!$admin->temporary_password_expires_at || $admin->temporary_password_expires_at->isPast())) {
                     return back()->withErrors(['email' => __('Your temporary password expired. Ask the administrator for a new invitation.')]);
                 }
-                if (Hash::check($request->password, $admin->password)) {
+                if (\App\Support\PasswordInput::verify($admin, $request->password)) {
                     if (Auth::guard('admin')->attempt($credential, $request->remember)) {
                         $request->session()->regenerate();
                         if ($admin->must_change_password) return redirect()->route('admin.employee-password.edit');

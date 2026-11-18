@@ -54,7 +54,8 @@ class ClientOnboardingController extends Controller
         $paystack->secret();
         if ($plan['price'] <= 0) throw \Illuminate\Validation\ValidationException::withMessages(['package' => __('Choose a paid plan for Paystack checkout.')]);
         $payment = DB::transaction(function () use ($type, $model, $emailColumn, $data, $plan) {
-            $password = Str::password(20);
+            // Letters and digits only: easy to type from an email, nothing any filter could alter.
+            $password = Str::password(16, symbols: false);
             $attributes = ['name' => $data['name'], 'slug' => Str::slug($data['name']).'-'.Str::lower(Str::random(10)),
                 $emailColumn => $data['email'], 'phone' => $data['phone'], 'password' => Hash::make($password), 'registration_token' => Str::random(80)];
             if (in_array($type, ['doctor', 'clinic'])) $attributes['status'] = 0;

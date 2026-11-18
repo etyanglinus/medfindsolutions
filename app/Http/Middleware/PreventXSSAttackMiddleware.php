@@ -16,7 +16,8 @@ class PreventXSSAttackMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->getMethod() == 'POST' || $request->getMethod() == 'PUT' || $request->getMethod() == 'PATCH') {
-            $input = array_filter($request->except('_token'));
+            // Passwords are compared exactly as typed; filtering them broke sign-in (see App\Support\PasswordInput).
+            $input = array_filter($request->except(array_merge(['_token'], \App\Support\PasswordInput::FIELDS)));
 
             $html_event_attributes = ['onload', 'onunload', 'onclick', 'ondblclick', 'onmousedown', 'onmouseup', 'onmouseover', 'onmousemove', 'onmouseout', 'onkeypress', 'onkeydown', 'onkeyup', 'onfocus', 'onblur', 'onsubmit', 'onreset', 'onchange', 'onselect', 'oninput', 'oncontextmenu'];
 

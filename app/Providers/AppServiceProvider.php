@@ -18,6 +18,8 @@ class AppServiceProvider extends ServiceProvider {
      * Register any application services.
      */
     public function register(): void {
+        // Lets the Anthropic SDK (Tafuta) run on hosts that disable php_uname().
+        require_once app_path('Support/AnthropicHostCompat.php');
         // Per-request memo of verified providers for the public badge (reset for every request/job).
         $this->app->scoped(\App\Services\LicenceVerification::class);
     }
