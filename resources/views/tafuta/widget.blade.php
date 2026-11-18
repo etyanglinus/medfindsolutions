@@ -78,6 +78,7 @@
     root.querySelector('[data-tafuta-close]').addEventListener('click', function () { open(false); launcher.focus(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) { open(false); launcher.focus(); } });
     root.querySelector('[data-tafuta-reset]').addEventListener('click', function () {
+        if (send.disabled) return;
         fetch(root.dataset.reset, { method: 'POST', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } });
         log.innerHTML = intro; bindChips();
     });
@@ -107,19 +108,30 @@
         }).join('');
         add('tafuta-cards', html);
     }
-    function ask(text) {
-        text = text.trim(); if (!text) return;
+    function ask(text, lookDeeper = false) {
+        text = text.trim(); if (!text || send.disabled) return;
         log.querySelectorAll('.tafuta-chips').forEach(function (el) { el.remove(); });
-        add('tafuta-msg tafuta-user', format(text));
+        if (!lookDeeper) add('tafuta-msg tafuta-user', format(text));
         input.value = ''; input.style.height = ''; send.disabled = true;
-        var typing = add('tafuta-typing', '{{ __('Tafuta is searching…') }}');
-        fetch(root.dataset.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ message: text }) })
+        var typing = add('tafuta-typing', lookDeeper ? @json(__('Tafuta is checking your question…')) : @json(__('Tafuta is searching…')));
+        fetch(root.dataset.endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ message: text, look_deeper: lookDeeper }) })
             .then(function (r) { return r.json().catch(function () { return {}; }); })
             .then(function (data) {
                 typing.remove();
                 if (data.emergency) add('tafuta-emergency', '<i class="fas fa-exclamation-triangle"></i> {{ __('If this is an emergency, call 999 or 112 now, or go to the nearest emergency department. Kenya Red Cross: 1199.') }}');
                 add('tafuta-msg tafuta-bot', format(data.reply || '{{ __('Sorry, something went wrong. Please try again.') }}'));
                 cards(data.cards);
+                if (data.offer_more_help) {
+                    var options = add('tafuta-chips', '');
+                    var button = document.createElement('button');
+                    button.type = 'button';
+                    button.textContent = @json(__('Look into it'));
+                    var notice = document.createElement('small');
+                    notice.textContent = @json(__('Tafuta uses AI for this answer. Leave out personal or medical details.'));
+                    options.append(button, notice);
+                    button.addEventListener('click', function () { ask(text, true); });
+                    log.scrollTop = log.scrollHeight;
+                }
             })
             .catch(function () { typing.remove(); add('tafuta-msg tafuta-bot', '<p>{{ __('Connection problem. Please try again.') }}</p>'); })
             .finally(function () { send.disabled = false; input.focus(); });

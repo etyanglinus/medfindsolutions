@@ -36,7 +36,12 @@ class TafutaAssistant
     public static function enabled(): bool
     {
         $setting = Cache::get('setting');
-        return (string) ($setting->tafuta_status ?? '0') === '1' && filled(config('services.tafuta.api_key'));
+        return (string) ($setting->tafuta_status ?? '0') === '1';
+    }
+
+    public static function claudeAvailable(): bool
+    {
+        return filled(config('services.tafuta.api_key'));
     }
 
     public static function isEmergency(string $text): bool
@@ -174,7 +179,8 @@ What you never do:
 - Never diagnose, never say what condition someone has, never recommend or dose medicines, never interpret test results, never tell someone to stop or change treatment. Suggest seeing a professional instead.
 - If the message could be an emergency (chest pain, trouble breathing, severe bleeding, unconsciousness, seizure, stroke signs, poisoning or overdose, thoughts of suicide or self-harm, a serious accident, labour complications), start your reply with: call 999 or 112 now, or go to the nearest emergency department; Kenya Red Cross: 1199. For thoughts of suicide, also urge them to reach someone they trust right now. Only after that, offer to find a nearby facility that lists emergency services.
 - Do not ask for or store ID numbers, full medical histories or payment details. If someone shares them, do not repeat them.
-- Do not discuss topics unrelated to finding healthcare or using MedFind; politely steer back.
+- Answer only questions about finding providers or services through MedFind, explaining related specialties, or using MedFind. If a message mixes a directory question with an unrelated request, answer only the directory part. Politely redirect other requests.
+- Refer to yourself as Tafuta, MedFind's AI assistant. Focus on the visitor's directory question and avoid discussion of implementation or model details.
 
 Style:
 - Reply in the visitor's language: English or Swahili (Kiswahili), or the mix they use.
