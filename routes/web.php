@@ -11,6 +11,8 @@
 \Illuminate\Support\Facades\Route::post('provider/email-preferences/{type}/{id}', [\App\Http\Controllers\ProviderEmailPreferenceController::class, 'update'])->whereIn('type', ['doctor','clinic','school','supplier'])->whereNumber('id')->middleware(['signed', 'throttle:30,1'])->name('provider.email-preferences.update');
 \Illuminate\Support\Facades\Route::get('provider/paybill/{transaction}', [\App\Http\Controllers\Provider\PaybillPaymentController::class, 'show'])->whereNumber('transaction')->middleware(['signed', 'throttle:60,1'])->name('provider.paybill.show');
 \Illuminate\Support\Facades\Route::post('provider/paybill/{transaction}', [\App\Http\Controllers\Provider\PaybillPaymentController::class, 'submit'])->whereNumber('transaction')->middleware(['signed', 'throttle:10,1'])->name('provider.paybill.submit');
+\Illuminate\Support\Facades\Route::post('tafuta/message', [\App\Http\Controllers\TafutaController::class, 'message'])->middleware('throttle:tafuta')->name('tafuta.message');
+\Illuminate\Support\Facades\Route::post('tafuta/reset', [\App\Http\Controllers\TafutaController::class, 'reset'])->name('tafuta.reset');
 \Illuminate\Support\Facades\Route::get('listing-plans/doctor', [\App\Http\Controllers\ListingInsightsController::class, 'doctorPlans'])->name('listing.doctor-plans');
 \Illuminate\Support\Facades\Route::patch('listing-inbox/{type}/{inquiry}', [\App\Http\Controllers\ListingInsightsController::class, 'updateInquiry'])->name('listing.inbox.update');
 // Short commit id of the code that is live, written by scripts/deploy.sh. The CI/CD pipeline polls this

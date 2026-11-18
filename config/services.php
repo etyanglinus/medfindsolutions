@@ -31,4 +31,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+
+    // Tafuta, the public chat assistant (Claude API). The key lives only in the server's .env.
+    'tafuta' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'model' => env('TAFUTA_MODEL', 'claude-opus-5-5'),
+        'effort' => env('TAFUTA_EFFORT', 'low'),
+    ],
+
 ];

@@ -28,8 +28,10 @@ class RestrictSalesEmployees
         if ($admin->is_super_admin) return $next($request);
         $allowed = ['admin.home', 'admin.dashboard', 'admin.clients.create', 'admin.clients.store', 'admin.doctor.index', 'admin.clinic-listing.index',
             'admin.provider-profiles.index', 'admin.edit-profile', 'admin.profile-update', 'admin.update-password',
-            'admin.employee-password.edit', 'admin.employee-password.update', 'admin.logout', 'admin.login', 'admin.store-login'];
-        abort_unless(in_array($name, $allowed, true), 403, __('Sales employees can only access client onboarding and their own account.'));
+            'admin.employee-password.edit', 'admin.employee-password.update', 'admin.logout', 'admin.login', 'admin.store-login',
+            // M-Pesa paybill review; each action still checks client.payment.view / client.payment.approve.
+            'admin.provider-payments.index', 'admin.provider-payments.receipt', 'admin.provider-payments.paybill-approve', 'admin.provider-payments.paybill-reject'];
+        abort_unless(in_array($name, $allowed, true), 403, __('Sales employees can only access client onboarding, payment verification and their own account.'));
         return $next($request);
     }
 }

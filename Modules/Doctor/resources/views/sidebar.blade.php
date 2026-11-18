@@ -32,6 +32,9 @@
 <li><a class="nav-link" href="{{ route('admin.subscription-coupons.index') }}"><i class="fas fa-ticket-alt"></i><span>{{ __('Subscription Coupons') }}</span></a></li>
 @endadminCan
 <li class="menu-header">{{ __('Provider Settings') }}</li>
+@adminCan('setting.view')
+<li><a class="nav-link" href="{{ route('admin.tafuta.edit') }}"><i class="fas fa-comment-medical"></i><span>{{ __('Tafuta assistant') }}</span></a></li>
+@endadminCan
 @adminCan('department.view')
 <li><a class="nav-link" href="{{ route('admin.department.index') }}"><i class="fas fa-stethoscope"></i><span>{{ __('Specialties') }}</span></a></li>
 @endadminCan

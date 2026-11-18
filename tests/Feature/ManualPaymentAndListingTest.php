@@ -171,4 +171,26 @@ class ManualPaymentAndListingTest extends TestCase
         $this->get(route('admin.subscriptions.payment-details'))->assertOk()->assertSee('247247');
         $this->get(route('admin.provider-payments.index'))->assertOk();
     }
+
+    public function test_employee_verifies_paybill_from_their_dashboard_but_cannot_activate_plans(): void
+    {
+        Mail::fake();
+        $this->paybillOn();
+        $doctor = $this->doctor('employee-check', expires: null);
+        $manual = app(ManualPaymentService::class);
+        $payment = $manual->submitCode($manual->startPaybill($doctor, 'doctor', 'premium'), 'EMP1234567');
+
+        $employee = new Admin;
+        $employee->forceFill(['name' => 'Sales Person', 'email' => 'sales@example.test', 'password' => bcrypt('x'), 'status' => 'active', 'is_super_admin' => 0])->save();
+        $employee->assignRole(app(\App\Services\SalesRoleService::class)->ensure());
+        $this->actingAs($employee, 'admin');
+
+        $this->get(route('admin.dashboard'))->assertOk()->assertSee('M-Pesa payments to verify')->assertSee('EMP1234567')->assertSee('Payments to verify');
+        $this->post(route('admin.providers.activate-plan', ['type' => 'doctor', 'id' => $doctor->id]), ['package' => 'premium', 'amount' => 0]);
+        $this->assertSame(1, ProviderPaymentTransaction::count(), 'Employees cannot switch plans on by hand.');
+
+        $this->from(route('admin.dashboard'))->post(route('admin.provider-payments.paybill-approve', $payment))->assertRedirect(route('admin.dashboard'));
+        $this->assertSame('paid', $payment->fresh()->status);
+        $this->assertSame('Sales Person', data_get($payment->fresh()->gateway_payload, 'approved_by_name'));
+    }
 }

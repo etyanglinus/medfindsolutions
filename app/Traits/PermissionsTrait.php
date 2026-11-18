@@ -8,7 +8,7 @@ trait PermissionsTrait {
     public static array $accountReportPermissions = ['group_name' => 'reports', 'permissions' => ['account.report.view']];
     public static array $clientOnboardingPermissions = [
         'group_name' => 'client payments',
-        'permissions' => ['client.payment.view', 'client.payment.approve', 'client.payment.refund'],
+        'permissions' => ['client.payment.view', 'client.payment.approve', 'client.plan.activate', 'client.payment.refund'],
     ];
     public static array $schoolPermissions = [
         'group_name' => 'school',

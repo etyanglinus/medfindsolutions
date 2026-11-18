@@ -1,5 +1,5 @@
 {{-- Switch a plan on from the admin panel (also for accounts whose plan expired). Expects $type and $client. --}}
-@if(checkAdminHasPermission('client.payment.approve'))
+@if(checkAdminHasPermission('client.plan.activate'))
 @php $activatePlans = app(\Modules\Doctor\app\Services\SubscriptionPlanService::class)->for($type); @endphp
 @if($activatePlans)
 <details class="mf-activate-plan mt-2">

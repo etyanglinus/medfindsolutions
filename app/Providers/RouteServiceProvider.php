@@ -28,6 +28,12 @@ class RouteServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Tafuta chat: per visitor, 10 messages a minute and 60 a day (the site-wide daily cap is a setting).
+        RateLimiter::for('tafuta', fn (Request $request) => [
+            \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('tafuta:'.$request->ip()),
+            \Illuminate\Cache\RateLimiting\Limit::perDay(60)->by('tafuta-day:'.$request->ip())->response(fn () => response()->json(['reply' => __('You have reached today\'s limit for Tafuta. You can keep searching the directory from the menu.'), 'cards' => [], 'emergency' => false], 429)),
+        ]);
+
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });

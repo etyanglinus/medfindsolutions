@@ -45,6 +45,7 @@ class Kernel extends ConsoleKernel {
         $schedule->command('providers:send-monthly-report --limit=100')->hourlyAt(15)->when(fn () => now()->day <= 3)->withoutOverlapping();
         $schedule->command('providers:expire-subscriptions')->hourly()->withoutOverlapping();
         $schedule->command('providers:check-licences')->dailyAt('07:10')->withoutOverlapping();
+        $schedule->command('tafuta:prune')->dailyAt('03:20')->withoutOverlapping();
         // Ends timed maintenance on schedule even when nobody visits the site at that moment.
         $schedule->call(fn () => app(\App\Services\MaintenanceService::class)->isActive())->everyMinute()->name('maintenance-auto-end');
     }
