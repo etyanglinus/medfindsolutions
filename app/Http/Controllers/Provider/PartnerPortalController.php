@@ -51,7 +51,8 @@ class PartnerPortalController extends Controller
             'product_views' => $record->analyticsEvents()->where('event_type', 'product_view')->where('created_at', '>=', now()->subDays(30))->count(),
             'quotation_requests' => $record->analyticsEvents()->where('event_type', 'quotation')->where('created_at', '>=', now()->subDays(30))->count(),
         ] : [];
-        return view('provider.partner-dashboard', compact('type', 'record', 'profile', 'subscription', 'entitlements', 'items', 'categories', 'quotes', 'enquiries', 'paymentHistory', 'analytics'));
+        $dash = app(\App\Services\ProviderDashboard::class)->build($type, $record, (int) request('days', 30));
+        return view('provider.partner-dashboard', compact('type', 'record', 'profile', 'subscription', 'entitlements', 'items', 'categories', 'quotes', 'enquiries', 'paymentHistory', 'analytics', 'dash'));
     }
 
     public function profile(string $type): View
