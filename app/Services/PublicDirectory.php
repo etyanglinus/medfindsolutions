@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ProviderProfile;
 use App\Support\KenyaPlaces;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Modules\Doctor\app\Models\Clinic;
@@ -24,18 +25,34 @@ class PublicDirectory
     public const TYPES = ['doctor', 'clinic', 'supplier', 'school'];
     private const CACHE_MINUTES = 10;
 
+    /**
+     * THE rule for "this specialist / facility is publicly listed", used by the home page, the
+     * directories, profile pages, landing pages and the sitemap, so they always agree:
+     * the account is switched on, it has an approved plan that has not expired and that does not
+     * exclude search listing, and (only when the admin switch is on) an approved, current licence.
+     * Confirming the email is NOT required to be listed: paying proves the inbox, and sign-in
+     * enforces confirmation separately.
+     */
+    public function listed(string $type, Builder $query): Builder
+    {
+        abort_unless(in_array($type, ['doctor', 'clinic'], true), 500);
+        $table = $query->getModel()->getTable();
+        return app(LicenceVerification::class)->apply($query, $type)
+            ->where("$table.status", 1)
+            ->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
+                ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+                ->where(fn ($w) => $w->whereJsonContains('entitlements->search_visibility', true)->orWhereJsonContains('entitlements->contact', true)
+                    ->orWhereNull('entitlements')->orWhereJsonLength('entitlements', 0)));
+    }
+
     public function doctors(): Builder
     {
-        return app(LicenceVerification::class)->apply(Doctor::query(), 'doctor')->publiclyVisible()->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
-            ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->whereJsonContains('entitlements->search_visibility', true));
+        return $this->listed('doctor', Doctor::query());
     }
 
     public function clinics(): Builder
     {
-        return app(LicenceVerification::class)->apply(Clinic::query(), 'clinic')->where('status', 1)->whereHas('subscriptions', fn ($q) => $q->where('status', 'approved')
-            ->where(fn ($w) => $w->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-            ->where(fn ($w) => $w->whereJsonContains('entitlements->search_visibility', true)->orWhereJsonContains('entitlements->contact', true)->orWhereNull('entitlements')->orWhereJsonLength('entitlements', 0)));
+        return $this->listed('clinic', Clinic::query());
     }
 
     public function suppliers(): Builder
@@ -53,6 +70,50 @@ class PublicDirectory
     public function schools(): Builder
     {
         return HealthcareInstitution::query()->published();
+    }
+
+    /**
+     * For the admin lists: is this provider on the public site, and if not, why not?
+     *
+     * @return array{listed: bool, reasons: list<string>, url: ?string, plan: ?string, expires: ?\Carbon\CarbonInterface, expired: bool}
+     */
+    public function status(string $type, Model $client): array
+    {
+        $listed = $this->query($type)->whereKey($client->getKey())->exists();
+        $reasons = [];
+        $profile = in_array($type, ['school', 'supplier'], true)
+            ? ProviderProfile::where('provider_type', $type)->where('provider_id', $client->getKey())->first() : null;
+
+        if (in_array($type, ['doctor', 'clinic'], true)) {
+            if ((int) $client->status !== 1) $reasons[] = __('Account is switched off');
+            $subscriptions = $client->subscriptions()->get();
+        } else {
+            if (!$profile) $reasons[] = __('No plan chosen yet');
+            elseif ($profile->status === ProviderProfile::STATUS_SUSPENDED) $reasons[] = __('Suspended');
+            elseif ($profile->status !== ProviderProfile::STATUS_PUBLISHED || !$profile->published_at) $reasons[] = __('Not published yet');
+            $subscriptions = $profile ? $profile->subscriptions()->get() : collect();
+        }
+
+        $current = $subscriptions->filter(fn ($s) => $s->status === 'approved' && (!$s->expires_at || $s->expires_at->isFuture()) && (!isset($s->starts_at) || !$s->starts_at || $s->starts_at->lte(now())))
+            ->sortByDesc(fn ($s) => $s->expires_at?->timestamp ?? PHP_INT_MAX)->first();
+        $lastApproved = $subscriptions->where('status', 'approved')->sortByDesc(fn ($s) => $s->expires_at?->timestamp ?? PHP_INT_MAX)->first();
+        if (!$current) {
+            if ($lastApproved?->expires_at) $reasons[] = __('Plan expired on :date', ['date' => $lastApproved->expires_at->format('d M Y')]);
+            elseif ($subscriptions->whereIn('status', ['pending', 'pending_payment'])->isNotEmpty()) $reasons[] = __('Payment not completed');
+            elseif ($profile || in_array($type, ['doctor', 'clinic'], true)) $reasons[] = __('No paid plan');
+        }
+        if (in_array($type, ['doctor', 'clinic'], true) && app(LicenceVerification::class)->required() && !app(LicenceVerification::class)->hasValidLicence($type, $client->getKey())) {
+            $reasons[] = __('Licence not approved (the "verified providers only" switch is on)');
+        }
+        if (!$listed && !$reasons) $reasons[] = __('Plan does not include a public listing');
+
+        $url = $listed ? match ($type) {
+            'doctor' => route('website.doctor.details', $client->slug), 'clinic' => route('website.facility.details', $client->slug),
+            'school' => route('website.healthcare-institution', $client->slug), 'supplier' => route('website.medical-supplier', $client->slug),
+        } : null;
+        $plan = $current ?? $lastApproved;
+        return ['listed' => $listed, 'reasons' => $listed ? [] : array_values(array_unique($reasons)), 'url' => $url,
+            'plan' => $plan?->package_name, 'expires' => $plan?->expires_at, 'expired' => !$current && (bool) $lastApproved];
     }
 
     public function query(string $type): Builder

@@ -22,8 +22,10 @@ class ProviderPaymentReviewController extends Controller
         checkAdminHasPermissionAndThrowException('client.payment.view');
         $payments = ProviderPaymentTransaction::query()->with(['providerProfile.provider', 'subscription'])
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->input('status')))
+            ->when($request->filled('gateway'), fn ($q) => $q->where('gateway', $request->input('gateway')))
             ->latest()->paginate(25)->withQueryString();
-        return view('admin.provider_payments.index', compact('payments'));
+        $paybillWaiting = ProviderPaymentTransaction::where('gateway', \App\Services\ManualPaymentService::GATEWAY_PAYBILL)->where('status', ProviderPaymentTransaction::STATUS_PENDING)->count();
+        return view('admin.provider_payments.index', compact('payments', 'paybillWaiting'));
     }
 
     public function recheck(ProviderPaymentTransaction $transaction): RedirectResponse

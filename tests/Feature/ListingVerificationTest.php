@@ -100,13 +100,19 @@ class ListingVerificationTest extends TestCase
         $this->licence('supplier', $supplier->id, 'pending', null);
         $controller = app(ProviderProfileController::class);
 
-        $refused = fn (callable $call) => rescue(fn () => $call() && false, fn ($e) => $e instanceof \Symfony\Component\HttpKernel\Exception\HttpException && $e->getStatusCode() === 422, false);
-        $this->assertTrue($refused(fn () => $controller->verify($profile)), 'Cannot verify without an approved licence.');
-        $this->assertTrue($refused(fn () => $controller->publish($profile)), 'Cannot publish an unverified provider.');
+        // Refusals come back as a readable message on the same page, never an error page.
+        $this->assertSame('error', $controller->verify($profile)->getSession()->get('alert-type'), 'Cannot verify without an approved licence.');
+        $this->assertSame('error', $controller->publish($profile)->getSession()->get('alert-type'), 'Cannot publish without an approved licence.');
+        $this->assertSame('approved', $profile->fresh()->status);
+        $this->assertSame('unverified', $profile->fresh()->verification_status);
 
+        // Once the licence is approved, one Publish click verifies and publishes.
         $this->licence('supplier', $supplier->id, 'approved', null);
-        $controller->verify($profile->fresh());
         $controller->publish($profile->fresh());
         $this->assertSame('published', $profile->fresh()->status);
+        $this->assertSame('verified', $profile->fresh()->verification_status);
+        $controller->unpublish($profile->fresh());
+        $this->assertSame('approved', $profile->fresh()->status);
+        $this->assertNull($profile->fresh()->published_at);
     }
 }

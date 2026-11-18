@@ -40,8 +40,11 @@ class SchoolSupplierPermissionsTest extends TestCase
     {
         $admin = $this->employee();
         $admin->givePermissionTo('school.view');
-        ProviderProfile::create(['provider_type' => 'school', 'provider_id' => 90001, 'status' => 'draft']);
-        ProviderProfile::create(['provider_type' => 'supplier', 'provider_id' => 90002, 'status' => 'draft']);
+        $school = \Modules\HealthcareInstitution\app\Models\HealthcareInstitution::create(['name' => 'School', 'slug' => 'school', 'official_email' => 'school@example.test', 'password' => 'x']);
+        $supplier = \Modules\MedicalSupplier\app\Models\MedicalSupplier::create(['name' => 'Supplier', 'slug' => 'supplier', 'official_email' => 'supplier@example.test', 'password' => 'x']);
+        ProviderProfile::create(['provider_type' => 'school', 'provider_id' => $school->id, 'status' => 'draft']);
+        ProviderProfile::create(['provider_type' => 'supplier', 'provider_id' => $supplier->id, 'status' => 'draft']);
+        ProviderProfile::create(['provider_type' => 'school', 'provider_id' => 90001, 'status' => 'draft']); // account deleted: not listed
         $view = app(ProviderProfileController::class)->index(Request::create('/admin/provider-profiles'));
         $profiles = $view->getData()['profiles'];
         $this->assertSame(1, $profiles->total());

@@ -6,4 +6,12 @@
 @endif
 <div class="small mb-3" id="checkout-quote-result" role="status"></div>
 <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold" @disabled(!$paystackEnabled)><i class="fas fa-lock me-2"></i>{{ __('Continue to Paystack') }}</button>
-@if(!$paystackEnabled)<p class="text-danger small mt-2">{{ __('Paystack is temporarily unavailable. Please contact Medfind Solutions.') }}</p>@endif
+@php $paybill = app(\App\Services\ManualPaymentService::class); $paybillSettings = $paybill->paybillEnabled() ? $paybill->settings() : null; @endphp
+@if(!$paystackEnabled && !$paybillSettings)<p class="text-danger small mt-2">{{ __('Paystack is temporarily unavailable. Please contact Medfind Solutions.') }}</p>@endif
+@if($paybillSettings)
+<div class="mf-paybill-option border rounded-3 p-3 mt-3">
+    <div class="fw-bold mb-1"><i class="fas fa-mobile-alt me-1 text-success"></i>{{ __('Or pay by M-Pesa Paybill') }}@if($paybillSettings->bank_name) <span class="text-muted fw-normal">({{ $paybillSettings->bank_name }})</span>@endif</div>
+    <p class="small text-muted mb-2">{{ __('Pay from your phone to Paybill :paybill, account :account. On the next page you enter the M-Pesa code from your SMS; our team confirms it, usually within one working day.', ['paybill' => $paybillSettings->paybill_number, 'account' => $paybillSettings->account_number]) }}</p>
+    <button type="submit" name="method" value="paybill" formnovalidate class="btn btn-outline-success rounded-pill px-4 fw-bold"><i class="fas fa-mobile-alt me-2"></i>{{ __('Pay by M-Pesa Paybill') }}</button>
+</div>
+@endif

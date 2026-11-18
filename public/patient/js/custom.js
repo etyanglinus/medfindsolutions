@@ -54,7 +54,10 @@
 
         // StickyHeader
         function stickyHeader() {
-            var strickyScrollPos = strickymenu.next().offset().top;
+            // Pages without an element after the header have no offset: skip instead of throwing on every scroll.
+            var nextOffset = strickymenu.next().offset();
+            if (!nextOffset) return;
+            var strickyScrollPos = nextOffset.top;
             if (strickymenu.length) {
                 if (mainWindow.scrollTop() > strickyScrollPos) {
                     strickymenu.addClass("sticky");

@@ -20,22 +20,34 @@ class ProviderProfileController extends Controller
             checkAdminHasPermissionAndThrowException($type.'.view');
             $types = [$type];
         }
-        $profiles = ProviderProfile::query()
-            ->whereIn('provider_type', $types)
-            ->when($request->input('status') === 'pending', fn ($query) => $query->whereIn('status', ['draft', 'pending_approval', 'changes_required']))
+        $search = trim((string) $request->input('q', ''));
+        $filter = $request->input('filter');
+        $base = ProviderProfile::query()->whereIn('provider_type', $types)->whereHas('provider');
+        $listedIds = collect($types)->flatMap(fn ($t) => app(\App\Services\PublicDirectory::class)->query($t)->pluck('provider_profile_id'))->filter()->values();
+        $counts = [
+            'all' => (clone $base)->count(),
+            'listed' => (clone $base)->whereIn('id', $listedIds)->count(),
+            'review' => (clone $base)->whereIn('status', ['draft', 'pending_approval', 'changes_required', 'approved', 'pending_payment'])->count(),
+            'suspended' => (clone $base)->where('status', ProviderProfile::STATUS_SUSPENDED)->count(),
+        ];
+        $profiles = (clone $base)
+            ->when($search !== '', fn ($q) => $q->whereHasMorph('provider', ['school', 'supplier'], fn ($p) => $p->where('name', 'like', "%{$search}%")->orWhere('official_email', 'like', "%{$search}%")))
+            ->when($filter === 'listed', fn ($q) => $q->whereIn('id', $listedIds))
+            ->when($filter === 'hidden', fn ($q) => $q->whereNotIn('id', $listedIds))
+            ->when($filter === 'review' || $request->input('status') === 'pending', fn ($q) => $q->whereIn('status', ['draft', 'pending_approval', 'changes_required', 'approved', 'pending_payment']))
+            ->when($filter === 'suspended', fn ($q) => $q->where('status', ProviderProfile::STATUS_SUSPENDED))
             ->with(['provider', 'subscriptions' => fn ($query) => $query->latest(), 'provider.documents'])
             ->latest()
-            ->paginate(25)
+            ->paginate(20)
             ->withQueryString();
 
         $title = $type === 'school' ? __('Schools') : ($type === 'supplier' ? __('Suppliers') : __('Schools and Suppliers'));
-        return view('admin.provider_profiles.index', compact('profiles', 'type', 'title'));
+        return view('admin.provider_profiles.index', compact('profiles', 'type', 'title', 'counts', 'search', 'filter'));
     }
 
     public function approve(ProviderProfile $profile): RedirectResponse
     {
         $this->authorizeUpdate($profile);
-        abort_unless(in_array($profile->provider_type, [ProviderProfile::TYPE_SCHOOL, ProviderProfile::TYPE_SUPPLIER], true), 404);
         $profile->update(['status' => ProviderProfile::STATUS_APPROVED]);
         return back()->with(['message' => __('Provider approved. It can be published after verification.'), 'alert-type' => 'success']);
     }
@@ -43,21 +55,42 @@ class ProviderProfileController extends Controller
     public function verify(ProviderProfile $profile): RedirectResponse
     {
         $this->authorizeUpdate($profile);
-        abort_unless(in_array($profile->provider_type, [ProviderProfile::TYPE_SCHOOL, ProviderProfile::TYPE_SUPPLIER], true), 404);
-        abort_unless(app(\App\Services\LicenceVerification::class)->hasValidLicence($profile->provider_type, $profile->provider_id), 422, __('Approve an unexpired licence or accreditation document (Provider Documents) before verifying this provider.'));
+        if (!app(\App\Services\LicenceVerification::class)->hasValidLicence($profile->provider_type, $profile->provider_id)) {
+            return back()->with(['message' => __('Approve an unexpired licence or accreditation document (Provider Documents) before verifying this provider.'), 'alert-type' => 'error']);
+        }
         $profile->update(['verification_status' => ProviderProfile::VERIFICATION_VERIFIED, 'verified_at' => now()]);
         return back()->with(['message' => __('Provider verification recorded.'), 'alert-type' => 'success']);
     }
 
+    /**
+     * One click: approve, verify and publish. Refused with a plain message (never an error page)
+     * when the profile is incomplete or no approved, current licence is on file.
+     */
     public function publish(ProviderProfile $profile): RedirectResponse
     {
         $this->authorizeUpdate($profile);
-        abort_unless($profile->provider && app(\App\Services\ProviderOnboardingService::class)->status($profile->provider, $profile->provider_type)['complete'], 422, __('The client must complete their profile, photo and verification document upload before publication.'));
-        abort_unless($profile->status === ProviderProfile::STATUS_APPROVED, 422, __('Approve the provider before publishing.'));
-        abort_unless($profile->verification_status === ProviderProfile::VERIFICATION_VERIFIED, 422, __('Verify the provider before publishing.'));
-        abort_unless(app(\App\Services\LicenceVerification::class)->hasValidLicence($profile->provider_type, $profile->provider_id), 422, __('The provider has no approved, unexpired licence. Approve a current document before publishing.'));
-        $profile->update(['status' => ProviderProfile::STATUS_PUBLISHED, 'published_at' => now()]);
-        return back()->with(['message' => __('Provider published.'), 'alert-type' => 'success']);
+        $name = $profile->provider?->name;
+        $onboarding = $profile->provider ? app(\App\Services\ProviderOnboardingService::class)->status($profile->provider, $profile->provider_type) : null;
+        if (!$onboarding || !$onboarding['complete']) {
+            $missing = $onboarding ? implode(', ', array_merge($onboarding['missing'], $onboarding['photo'] ? [] : [__('logo')], $onboarding['document'] ? [] : [__('licence document')])) : '';
+            return back()->with(['message' => __(':name cannot be published yet: the profile is missing :missing.', ['name' => $name, 'missing' => $missing ?: __('required details')]), 'alert-type' => 'error']);
+        }
+        if (!app(\App\Services\LicenceVerification::class)->hasValidLicence($profile->provider_type, $profile->provider_id)) {
+            return back()->with(['message' => __(':name cannot be published until their licence is approved. Open "Review licence", approve the document, then click Publish again.', ['name' => $name]), 'alert-type' => 'error']);
+        }
+        $profile->update(['status' => ProviderProfile::STATUS_PUBLISHED, 'published_at' => $profile->published_at ?? now(),
+            'verification_status' => ProviderProfile::VERIFICATION_VERIFIED, 'verified_at' => $profile->verified_at ?? now()]);
+        \App\Services\PublicDirectory::forget();
+        $live = app(\App\Services\PublicDirectory::class)->query($profile->provider_type)->whereKey($profile->provider_id)->exists();
+        return back()->with(['message' => $live ? __(':name is published and visible on the website.', ['name' => $name]) : __(':name is published, but stays hidden until they have a paid, current plan. Use "Activate plan" if they paid another way.', ['name' => $name]), 'alert-type' => $live ? 'success' : 'warning']);
+    }
+
+    public function unpublish(ProviderProfile $profile): RedirectResponse
+    {
+        $this->authorizeUpdate($profile);
+        $profile->update(['status' => ProviderProfile::STATUS_APPROVED, 'published_at' => null]);
+        \App\Services\PublicDirectory::forget();
+        return back()->with(['message' => __(':name has been taken off the website. Their account and plan are unchanged.', ['name' => $profile->provider?->name]), 'alert-type' => 'success']);
     }
 
     public function requestChanges(Request $request, ProviderProfile $profile): RedirectResponse
@@ -72,6 +105,7 @@ class ProviderProfileController extends Controller
     {
         $this->authorizeUpdate($profile);
         $profile->update(['status' => ProviderProfile::STATUS_SUSPENDED]);
+        \App\Services\PublicDirectory::forget();
         return back()->with(['message' => __('Provider suspended.'), 'alert-type' => 'success']);
     }
 
