@@ -36,7 +36,9 @@ class SalesEmployeesTest extends TestCase
         }
         $this->assertFalse($employee->can('setting.view'));
         $employee->givePermissionTo(\Spatie\Permission\Models\Permission::firstOrCreate(['name' => 'setting.view', 'guard_name' => 'admin'], ['group_name' => 'setting']));
-        foreach (['/admin/settings','/admin/test-mail','/admin/menu','/admin/faq-category','/admin/social-link','/admin/app/on-boarding-screen','/admin/provider-messages','/admin/admin','/admin/role','/admin/provider-payments'] as $url) $this->getJson($url)->assertForbidden();
+        foreach (['/admin/settings','/admin/test-mail','/admin/menu','/admin/faq-category','/admin/social-link','/admin/app/on-boarding-screen','/admin/provider-messages','/admin/admin','/admin/role','/admin/provider-payments/1/checkout','/admin/tafuta','/admin/subscriptions/payment-details'] as $url) $this->getJson($url)->assertForbidden();
+        // Employees verify M-Pesa paybill payments (Sales role), so the payments list is open to them.
+        $this->get(route('admin.provider-payments.index'))->assertOk();
         $this->get(route('admin.dashboard'))->assertOk()->assertSee('Sales dashboard')->assertDontSee('Manage Website')->assertDontSee('Test Mail');
         foreach (['doctor','clinic','school','supplier'] as $type) $this->get(route('admin.clients.create', ['type' => $type]))->assertOk();
     }

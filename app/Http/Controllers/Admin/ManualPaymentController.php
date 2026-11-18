@@ -33,7 +33,7 @@ class ManualPaymentController extends Controller
     /** Switch a plan on for any specialist, facility, school or supplier, including one whose plan has expired. */
     public function activate(Request $request, string $type, int $id, ManualPaymentService $manual): RedirectResponse
     {
-        checkAdminHasPermissionAndThrowException('client.payment.approve');
+        checkAdminHasPermissionAndThrowException('client.plan.activate');
         $client = ProviderPaystackService::model($type)::findOrFail($id);
         $codes = collect(app(SubscriptionPlanService::class)->for($type))->pluck('id')->all();
         $data = $request->validate([

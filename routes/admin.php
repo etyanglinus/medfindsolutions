@@ -59,6 +59,8 @@ Route::group(['middleware'=>'translation', 'as' => 'admin.', 'prefix' => 'admin'
         Route::post('provider-profiles/{profile}/suspend', [ProviderProfileController::class, 'suspend'])->name('provider-profiles.suspend');
         Route::get('provider-payments', [ProviderPaymentReviewController::class, 'index'])->name('provider-payments.index');
         Route::get('provider-payments/{transaction}/receipt', [\App\Http\Controllers\ProviderReceiptController::class, 'admin'])->name('provider-payments.receipt');
+        Route::get('tafuta', [\App\Http\Controllers\Admin\TafutaSettingsController::class, 'edit'])->name('tafuta.edit');
+        Route::put('tafuta', [\App\Http\Controllers\Admin\TafutaSettingsController::class, 'update'])->name('tafuta.update');
         Route::post('provider-payments/{transaction}/paybill-approve', [\App\Http\Controllers\Admin\ManualPaymentController::class, 'approve'])->name('provider-payments.paybill-approve');
         Route::post('provider-payments/{transaction}/paybill-reject', [\App\Http\Controllers\Admin\ManualPaymentController::class, 'reject'])->name('provider-payments.paybill-reject');
         Route::post('providers/{type}/{id}/activate-plan', [\App\Http\Controllers\Admin\ManualPaymentController::class, 'activate'])->whereIn('type', ['doctor', 'clinic', 'school', 'supplier'])->whereNumber('id')->name('providers.activate-plan');

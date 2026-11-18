@@ -298,6 +298,10 @@
     </script>
 @endif
 
+@if (\App\Services\Tafuta\TafutaAssistant::enabled())
+    @include('tafuta.widget')
+@endif
+
 @stack('js')
 
 @if (customCode()?->footer_javascript)

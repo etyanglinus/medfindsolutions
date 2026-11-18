@@ -10,7 +10,10 @@ class DashboardController extends Controller {
         checkAdminHasPermissionAndThrowException('dashboard.view');
         if (!auth('admin')->user()->is_super_admin) {
             $accounts = \App\Models\AccountCreationAudit::where('creator_admin_id', auth('admin')->id())->latest('created_at')->paginate(20);
-            return view('admin.employees.dashboard', compact('accounts'));
+            $paybillPending = checkAdminHasPermission('client.payment.approve')
+                ? \App\Models\ProviderPaymentTransaction::with(['providerProfile.provider', 'subscription'])->where('gateway', \App\Services\ManualPaymentService::GATEWAY_PAYBILL)->where('status', 'pending')->oldest('updated_at')->take(20)->get()
+                : collect();
+            return view('admin.employees.dashboard', compact('accounts', 'paybillPending'));
         }
         return view('admin.dashboard', app(\App\Services\AdminDashboardService::class)->data($request));
     }
