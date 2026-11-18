@@ -10,21 +10,20 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Modules\Doctor\app\Models\Location;
 use Modules\Doctor\app\Models\Department;
-use Modules\Language\app\Models\Language;
-use Modules\Language\app\Traits\GenerateTranslationTrait;
 use Modules\Doctor\app\Services\SubscriptionAccessService;
 
 class ProfileController extends Controller {
-    use GenerateTranslationTrait, RedirectHelperTrait;
+    use RedirectHelperTrait;
+
+    private const PROFILE_LANGUAGE = 'en';
 
     public function __construct() {
         $this->middleware('auth:doctor');
     }
 
     public function edit_profile() {
-        $requestedCode = request('code') ?? getSessionLanguage() ?? 'en';
-        $fallbackCode = Language::query()->value('code') ?? 'en';
-        $code = Language::where('code', $requestedCode)->exists() ? $requestedCode : $fallbackCode;
+        app()->setLocale(self::PROFILE_LANGUAGE);
+        $code = self::PROFILE_LANGUAGE;
 
         $doctor = Auth::guard('doctor')->user();
         $subscriptionAccess = app(SubscriptionAccessService::class);
@@ -39,10 +38,9 @@ class ProfileController extends Controller {
         $subscription = $subscriptionAccess->activeDoctorSubscription($doctor);
         $departments = Department::with('translation')->get();
         $locations = Location::with('translation')->whereHas('translations', fn ($query) => $query->where('name', 'Nairobi'))->get();
-        $languages = allLanguages();
         $services = \Modules\Doctor\app\Models\Service::active();
 
-        return view('doctor.profile.edit_profile', compact('doctor' ,'code', 'departments', 'locations', 'languages', 'subscription', 'services'));
+        return view('doctor.profile.edit_profile', compact('doctor' ,'code', 'departments', 'locations', 'subscription', 'services'));
     }
 
     public function profile_update(Request $request) {
@@ -54,15 +52,12 @@ class ProfileController extends Controller {
                 ->with(['message' => __('Your profile can only be edited when your account is active and your subscription is approved and active.'), 'alert-type' => 'error']);
         }
 
-        $fallbackCode = Language::query()->value('code') ?? 'en';
-        $submittedCode = $request->input('code', $fallbackCode);
-        $code = Language::where('code', $submittedCode)->exists() ? $submittedCode : $fallbackCode;
+        app()->setLocale(self::PROFILE_LANGUAGE);
 
         $rules = [
             'telemedicine_available' => $subscription->hasEntitlement('telemedicine') ? 'sometimes|boolean' : 'exclude',
             'emergency_available' => $subscription->hasEntitlement('emergency') ? 'sometimes|boolean' : 'exclude',
             'reviews_enabled' => $subscription->hasEntitlement('reviews') ? 'sometimes|boolean' : 'exclude',
-            'code' => 'required|exists:languages,code',
             'name'  => 'required|string|max:255',
             'email' => 'required|unique:doctors,email,' . $doctor->id,
             'phone'   => 'required',
@@ -71,7 +66,7 @@ class ProfileController extends Controller {
             'accepted_insurance' => $subscription->hasEntitlement('insurance') ? 'nullable|string|max:2000' : 'exclude',
             'service_ids' => $subscription->hasEntitlement('services') ? 'nullable|array' : 'exclude',
             'service_ids.*' => 'integer|exists:services,id',
-            'years_of_experience' => 'required',
+            'years_of_experience' => 'required|integer|min:0',
 
             'department_id'   => 'required|exists:departments,id',
             'location_id'     => 'required|exists:locations,id',
@@ -99,8 +94,6 @@ class ProfileController extends Controller {
             'fee.numeric'             => __('Fee must be a numeric.'),
             'years_of_experience.required' => __('Years of experience is required.'),
 
-            'code.required'           => __('Language is required and must be a string.'),
-            'code.exists'             => __('The selected language is invalid.'),
 
             'seo_title.max'           => __('SEO title may not be greater than 1000 characters.'),
             'seo_title.string'        => __('SEO title must be a string.'),
@@ -127,7 +120,6 @@ class ProfileController extends Controller {
             'qualifications.required' => __('Qualifications is required.'),
         ];
         $validatedData = $this->validate($request, $rules, $customMessages + app(\App\Services\ProfileRequirements::class)->messages());
-        $validatedData['code'] = $code;
         $nairobiLocationId = Location::whereHas('translations', fn ($query) => $query->where('name', 'Nairobi'))->value('id');
         if (! $nairobiLocationId) {
             return redirect()->back()->withInput()->with(['alert-type' => 'error', 'message' => __('The Nairobi location must be configured before updating your profile.')]);
@@ -153,16 +145,15 @@ class ProfileController extends Controller {
         }
         $doctor->save();
 
-        $this->updateTranslations(
-            $doctor,
-            $request,
+        $doctor->translations()->updateOrCreate(
+            ['lang_code' => self::PROFILE_LANGUAGE],
             $validatedData,
         );
 
         return $this->redirectWithMessage(
             RedirectType::UPDATE->value,
             'doctor.edit-profile',
-            ['doctor' => $doctor->id, 'code' => $request->code]
+            ['doctor' => $doctor->id]
         );
     }
 
