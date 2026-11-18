@@ -213,8 +213,8 @@
             </a>
 
             {{-- Desktop Navigation Links --}}
-            <div class="collapse navbar-collapse" id="mf-nav-collapse">
-                <ul class="navbar-nav me-auto gap-1">
+            <div class="collapse navbar-collapse justify-content-end" id="mf-nav-collapse">
+                <ul class="navbar-nav gap-1">
                     @php
                         $navLinks = [
                             ['url' => route('home'),               'label' => __('Home')],
@@ -242,7 +242,7 @@
                     use Illuminate\Support\Str;
                     $authUser  = null;
                     $authName  = '';
-                    $dashRoute = route('login');
+                    $dashRoute = null;
                     $logoutRoute  = null;
 
                     if (auth('web')->check()) {
@@ -268,8 +268,8 @@
                     }
                 @endphp
 
-                <div class="d-flex align-items-center gap-2 ms-2">
-                    @if($authUser)
+                @if($authUser)
+                    <div class="d-flex align-items-center gap-2 ms-2">
                         {{-- Authenticated Dropdown --}}
                         <div class="dropdown">
                             <button class="btn btn-nav-primary dropdown-toggle d-flex align-items-center gap-2"
@@ -297,14 +297,8 @@
                                 </li>
                             </ul>
                         </div>
-                    @else
-                        {{-- Guest Actions --}}
-                       
-                        <a href="{{ route('login') }}" class="btn btn-nav-primary shadow-sm">
-                            <i class="fas fa-sign-in-alt me-1"></i>{{ __('Sign In') }}
-                        </a>
-                    @endif
-                </div>
+                    </div>
+                @endif
             </div>
 
             {{-- Mobile Actions & Menu Toggler --}}
@@ -312,10 +306,6 @@
                 @if($authUser)
                     <a href="{{ $dashRoute }}" class="btn btn-nav-primary btn-sm px-2 px-sm-3">
                         <i class="fas fa-tachometer-alt me-1"></i>{{ __('Dashboard') }}
-                    </a>
-                @else
-                    <a href="{{ route('login') }}" class="btn btn-nav-primary btn-sm px-2 px-sm-3">
-                        <i class="fas fa-sign-in-alt me-1"></i>{{ __('Sign In') }}
                     </a>
                 @endif
                 <button class="navbar-toggler" type="button"
@@ -347,10 +337,9 @@
                 @endforeach
             </ul>
 
-            <div class="drawer-divider"></div>
-
-            <div class="d-flex flex-column gap-2 px-1 pb-3 pt-1">
-                @if($authUser)
+            @if($authUser)
+                <div class="drawer-divider"></div>
+                <div class="d-flex flex-column gap-2 px-1 pb-3 pt-1">
                     <a href="{{ $dashRoute }}" class="btn btn-nav-primary w-100 text-center">
                         <i class="fas fa-tachometer-alt me-2"></i>{{ __('Dashboard') }}
                     </a>
@@ -360,12 +349,8 @@
                             <i class="fas fa-sign-out-alt me-2"></i>{{ __('Log Out') }}
                         </button>
                     </form>
-                @else
-                    <a href="{{ route('login') }}" class="btn btn-nav-primary w-100 text-center shadow-sm">
-                        <i class="fas fa-sign-in-alt me-1"></i>{{ __('Sign In') }}
-                    </a>
-                @endif
-            </div>
+                </div>
+            @endif
         </div>
     </div>
 </body>
