@@ -41,14 +41,29 @@ class SubscriptionPackageController extends Controller
         return redirect()->route('admin.subscriptions.packages.index')->with(['message' => __('Plan deleted.'), 'alert-type' => 'success']);
     }
 
+    /** Settings for manual M-Pesa paybill payments (e.g. the Equity Bank paybill). */
     public function paymentDetails()
     {
-        return redirect()->route('admin.basicpayment');
+        checkAdminHasPermissionAndThrowException('setting.view');
+        $details = \Modules\Doctor\app\Models\SubscriptionPaymentSetting::query()->first();
+        return view('doctor::subscription.payment-details', compact('details'));
     }
 
     public function updatePaymentDetails(Request $request): RedirectResponse
     {
-        abort(410, __('Only Paystack payments are supported. Configure Paystack in payment settings.'));
+        checkAdminHasPermissionAndThrowException('setting.update');
+        $data = $request->validate([
+            'is_active' => ['nullable', 'boolean'],
+            'bank_name' => ['nullable', 'string', 'max:120'],
+            'paybill_number' => ['required_if:is_active,1', 'nullable', 'regex:/^[0-9]{5,7}$/'],
+            'account_number' => ['required_if:is_active,1', 'nullable', 'string', 'max:60'],
+            'account_name' => ['nullable', 'string', 'max:120'],
+            'instructions' => ['nullable', 'string', 'max:2000'],
+        ], ['paybill_number.regex' => __('A paybill number is 5 to 7 digits, for example 247247.')]);
+        $data['is_active'] = $request->boolean('is_active');
+        $details = \Modules\Doctor\app\Models\SubscriptionPaymentSetting::query()->first() ?? new \Modules\Doctor\app\Models\SubscriptionPaymentSetting();
+        $details->fill($data)->save();
+        return back()->with(['message' => $data['is_active'] ? __('Paybill payments are on. Providers now see the paybill option when they pay.') : __('Paybill settings saved. The option is hidden from providers while it is off.'), 'alert-type' => 'success']);
     }
 
     private function validated(Request $request, ?SubscriptionPackage $package = null): array

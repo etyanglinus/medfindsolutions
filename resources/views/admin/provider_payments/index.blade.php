@@ -16,6 +16,13 @@
                     </select></form>
                 </div>
                 <div class="card-body table-responsive">
+                    @if(session('message'))<div class="alert alert-{{ session('alert-type') === 'error' ? 'danger' : 'success' }}">{{ session('message') }}</div>@endif
+                    @if($errors->any())<div class="alert alert-danger">@foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach</div>@endif
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        @if($paybillWaiting)<a class="btn btn-warning" href="{{ route('admin.provider-payments.index', ['gateway' => 'mpesa_paybill', 'status' => 'pending']) }}"><i class="fas fa-mobile-alt mr-1 me-1"></i>{{ trans_choice(':count M-Pesa paybill payment is waiting for review|:count M-Pesa paybill payments are waiting for review', $paybillWaiting) }}</a>@endif
+                        @adminCan('setting.view')<a class="btn btn-outline-secondary" href="{{ route('admin.subscriptions.payment-details') }}"><i class="fas fa-cog mr-1 me-1"></i>{{ __('Paybill settings') }}</a>@endadminCan
+                        @if(request()->hasAny(['status', 'gateway']))<a class="btn btn-link" href="{{ route('admin.provider-payments.index') }}">{{ __('Show all payments') }}</a>@endif
+                    </div>
                     <table class="table">
                         <thead><tr><th>{{ __('Provider') }}</th><th>{{ __('Plan') }}</th><th>{{ __('Gateway / reference') }}</th><th>{{ __('Amount') }}</th><th>{{ __('Gateway details') }}</th><th>{{ __('Status / action') }}</th></tr></thead>
                         <tbody>
@@ -29,11 +36,33 @@
                                     {{ data_get($payment->gateway_payload, 'bank_name') }}
                                     @if(data_get($payment->gateway_payload, 'account_number'))<br>{{ __('Account') }}: {{ data_get($payment->gateway_payload, 'account_number') }}@endif
                                     @if(data_get($payment->gateway_payload, 'expected_email'))<br>{{ data_get($payment->gateway_payload, 'expected_email') }}@endif
+                                    @if($payment->gateway === 'mpesa_paybill')
+                                        @if(data_get($payment->gateway_payload, 'mpesa_code'))<br>{{ __('M-Pesa code') }}: <strong class="text-monospace font-monospace">{{ data_get($payment->gateway_payload, 'mpesa_code') }}</strong>@else<br><span class="text-muted">{{ __('No M-Pesa code entered yet') }}</span>@endif
+                                        @if(data_get($payment->gateway_payload, 'payer_phone'))<br>{{ __('Paid from') }}: {{ data_get($payment->gateway_payload, 'payer_phone') }}@endif
+                                        @if(data_get($payment->gateway_payload, 'submitted_at'))<br><small class="text-muted">{{ __('Submitted') }} {{ \Carbon\Carbon::parse(data_get($payment->gateway_payload, 'submitted_at'))->format('d M Y H:i') }}</small>@endif
+                                        @if(data_get($payment->gateway_payload, 'approved_by_name'))<br><small class="text-muted">{{ __('Approved by :name', ['name' => data_get($payment->gateway_payload, 'approved_by_name')]) }}</small>@endif
+                                    @elseif($payment->gateway === 'admin')
+                                        <br><small class="text-muted">{{ __('Activated by :name', ['name' => data_get($payment->gateway_payload, 'activated_by_name')]) }}</small>
+                                        @if(data_get($payment->gateway_payload, 'external_reference'))<br>{{ __('Reference') }}: {{ data_get($payment->gateway_payload, 'external_reference') }}@endif
+                                        @if(data_get($payment->gateway_payload, 'activation_note'))<br><small>{{ data_get($payment->gateway_payload, 'activation_note') }}</small>@endif
+                                    @endif
                                     @if($payment->failure_reason)<br><small class="text-danger">{{ $payment->failure_reason }}</small>@endif
                                     @if(data_get($payment->gateway_payload, 'refund_reference'))<br>{{ __('Refund ref') }}: {{ data_get($payment->gateway_payload, 'refund_reference') }}@endif
                                 </td>
                                 <td>
-                                    <strong>{{ ucfirst(str_replace('_', ' ', $payment->status)) }}</strong>
+                                    <strong>{{ $payment->gateway === 'mpesa_paybill' && $payment->status === 'pending' ? __('Waiting for review') : ($payment->gateway === 'mpesa_paybill' && $payment->status === 'initiated' ? __('Waiting for M-Pesa code') : ucfirst(str_replace('_', ' ', $payment->status))) }}</strong>
+                                    @if($payment->gateway === 'mpesa_paybill' && $payment->status === 'pending')
+                                        @if(checkAdminHasPermission('client.payment.approve'))
+                                        <form method="POST" action="{{ route('admin.provider-payments.paybill-approve', $payment) }}" class="mt-2" onsubmit="return confirm('{{ __('Approve this payment? Confirm the code and the amount are on the bank statement first.') }}')">@csrf
+                                            <input name="admin_note" class="form-control form-control-sm mb-1" maxlength="500" placeholder="{{ __('Note (optional)') }}">
+                                            <button class="btn btn-sm btn-success"><i class="fas fa-check mr-1 me-1"></i>{{ __('Approve and activate') }}</button>
+                                        </form>
+                                        <form method="POST" action="{{ route('admin.provider-payments.paybill-reject', $payment) }}" class="mt-2">@csrf
+                                            <input name="reason" class="form-control form-control-sm mb-1" maxlength="500" required placeholder="{{ __('Reason, e.g. code not found on statement') }}">
+                                            <button class="btn btn-sm btn-outline-danger">{{ __('Reject') }}</button>
+                                        </form>
+                                        @endif
+                                    @endif
                                     @if($payment->status === 'paid')<a class="d-block small" href="{{ route('admin.provider-payments.receipt', $payment) }}"><i class="fas fa-file-pdf"></i> {{ __('Receipt') }}</a>@endif
                                     @if(in_array($payment->status, ['initiated', 'pending']) && $payment->gateway === 'paystack')
 <form method="POST" action="{{ route('admin.provider-payments.recheck', $payment) }}" class="mt-2">@csrf<button class="btn btn-sm btn-success">{{ __('Check with Paystack') }}</button></form>

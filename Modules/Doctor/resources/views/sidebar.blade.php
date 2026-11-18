@@ -22,7 +22,11 @@
 <li><a class="nav-link" href="{{ route('admin.subscriptions.packages.index') }}"><i class="fas fa-layer-group"></i><span>{{ __('Subscription Plans') }}</span></a></li>
 @endadminCan
 @adminCan('client.payment.view')
-<li><a class="nav-link" href="{{ route('admin.provider-payments.index') }}"><i class="fas fa-money-check-alt"></i><span>{{ __('Client Payment Reviews') }}</span></a></li>
+@php $paybillWaitingCount = \App\Models\ProviderPaymentTransaction::where('gateway', 'mpesa_paybill')->where('status', 'pending')->count(); @endphp
+<li><a class="nav-link" href="{{ route('admin.provider-payments.index') }}"><i class="fas fa-money-check-alt"></i><span>{{ __('Client Payment Reviews') }}</span>@if($paybillWaitingCount)<span class="badge badge-warning bg-warning text-dark ml-1 ms-1">{{ $paybillWaitingCount }}</span>@endif</a></li>
+@endadminCan
+@adminCan('setting.view')
+<li><a class="nav-link" href="{{ route('admin.subscriptions.payment-details') }}"><i class="fas fa-mobile-alt"></i><span>{{ __('M-Pesa Paybill') }}</span></a></li>
 @endadminCan
 @adminCan('setting.view')
 <li><a class="nav-link" href="{{ route('admin.subscription-coupons.index') }}"><i class="fas fa-ticket-alt"></i><span>{{ __('Subscription Coupons') }}</span></a></li>

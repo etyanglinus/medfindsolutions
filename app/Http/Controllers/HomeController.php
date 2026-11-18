@@ -115,7 +115,7 @@ class HomeController extends Controller {
                 // ============================================
                 // Get prioritized + rotating doctors
                 // ============================================
-                $doctors = app(\App\Services\LicenceVerification::class)->apply(Doctor::query(), 'doctor')->select('id', 'department_id', 'location_id', 'slug', 'name', 'image')
+                $doctors = app(\App\Services\PublicDirectory::class)->listed('doctor', Doctor::query())->select('id', 'department_id', 'location_id', 'slug', 'name', 'image')
                     ->with([
                         'translation' => function ($query) {
                             $query->select('doctor_id', 'designations');
@@ -177,7 +177,7 @@ class HomeController extends Controller {
                 // ============================================
                 // Get prioritized + rotating clinics
                 // ============================================
-                $featuredClinics = app(\App\Services\LicenceVerification::class)->apply(Clinic::query(), 'clinic')->select('id', 'slug', 'name', 'specialty', 'logo', 'location')
+                $featuredClinics = app(\App\Services\PublicDirectory::class)->listed('clinic', Clinic::query())->select('id', 'slug', 'name', 'specialty', 'logo', 'location')
                     ->with([
                         'subscriptions' => function ($query) {
                             $query->where('status', 'approved')
@@ -305,7 +305,7 @@ class HomeController extends Controller {
         $feeRange  = $request->input('fee_range');
         $hours     = $request->input('hours');
 
-        $query = app(\App\Services\LicenceVerification::class)->apply(Clinic::query(), 'clinic')->with('latestSubscription')
+        $query = app(\App\Services\PublicDirectory::class)->listed('clinic', Clinic::query())->with('latestSubscription')
             ->where('status', 1)
             ->whereHas('subscriptions', fn ($query) => $query->where('status', 'approved')->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->where(fn ($q) => $q->whereJsonContains('entitlements->search_visibility', true)->orWhereJsonContains('entitlements->contact', true)->orWhereNull('entitlements')->orWhereJsonLength('entitlements', 0)))
             ->orderBy('name');
@@ -355,7 +355,7 @@ class HomeController extends Controller {
      * Public clinic / facility detail page.
      */
     public function facilityDetails(Request $request, string $slug) {
-        $clinic = app(\App\Services\LicenceVerification::class)->apply(Clinic::query(), 'clinic')->with(['galleryImages', 'branches'])
+        $clinic = app(\App\Services\PublicDirectory::class)->listed('clinic', Clinic::query())->with(['galleryImages', 'branches'])
             ->where('status', 1)
             ->whereHas('subscriptions', function ($query) {
                 $query->where('status', 'approved')
@@ -369,7 +369,7 @@ class HomeController extends Controller {
         $subscription = app(SubscriptionAccessService::class)->activeClinicSubscription($clinic);
         $reviews = \Modules\Doctor\app\Models\ProviderReview::where('provider_type', 'clinic')->where('provider_id', $clinic->id)->where('status', 'published')->latest()->get();
 
-        $related = app(\App\Services\LicenceVerification::class)->apply(Clinic::query(), 'clinic')->where('status', 1)
+        $related = app(\App\Services\PublicDirectory::class)->listed('clinic', Clinic::query())->where('status', 1)
             ->whereHas('subscriptions', function ($query) {
                 $query->where('status', 'approved')
                     ->where(fn ($q) => $q->whereJsonContains('entitlements->search_visibility', true)->orWhereJsonContains('entitlements->contact', true)->orWhereNull('entitlements')->orWhereJsonLength('entitlements', 0))
@@ -503,7 +503,7 @@ class HomeController extends Controller {
             },
         ])->first();
         $description = $home_sections?->department_description;
-        $doctors = app(\App\Services\LicenceVerification::class)->apply(Doctor::query(), 'doctor')->select('id', 'department_id', 'location_id', 'slug', 'name', 'image')->with([
+        $doctors = app(\App\Services\PublicDirectory::class)->listed('doctor', Doctor::query())->select('id', 'department_id', 'location_id', 'slug', 'name', 'image')->with([
             'translation'            => function ($query) {
                 $query->select('doctor_id', 'designations');
             },
@@ -548,7 +548,7 @@ class HomeController extends Controller {
         $insurance = $request->input('insurance');
         $feeRange = $request->input('fee_range');
 
-        $doctors = app(\App\Services\LicenceVerification::class)->apply(Doctor::query(), 'doctor')->select('id', 'department_id', 'location_id', 'slug', 'name', 'image', 'fee')->publiclyVisible()->with([
+        $doctors = app(\App\Services\PublicDirectory::class)->listed('doctor', Doctor::query())->select('id', 'department_id', 'location_id', 'slug', 'name', 'image', 'fee')->with([
             'latestSubscription',
             'translation'            => function ($query) {
                 $query->select('doctor_id', 'designations');
@@ -569,11 +569,6 @@ class HomeController extends Controller {
                 $query->select('doctor_id', 'link', 'icon')->active();
             },
         ])->active()
-            ->whereHas('subscriptions', function ($query) {
-                $query->where('status', 'approved')
-                    ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->whereJsonContains('entitlements->search_visibility', true);
-            })
             ->when($keyword, fn ($query) => $query->where(fn ($query) => $query->where('name', 'like', "%{$keyword}%")->orWhere('email', 'like', "%{$keyword}%")))
             ->when($departmentId, fn ($query) => $query->where('department_id', $departmentId))
             ->when($insurance, fn ($query) => $query->whereHas('translations', fn ($translation) => $translation->where('accepted_insurance', 'like', "%{$insurance}%")))
@@ -597,7 +592,7 @@ class HomeController extends Controller {
             ?? CustomPagination::where('section_name', 'Doctor')->value('item_qty')
             ?? 10;
 
-        $doctors = app(\App\Services\LicenceVerification::class)->apply(Doctor::query(), 'doctor')->select('id', 'department_id', 'location_id', 'slug', 'name', 'image')->with([
+        $doctors = app(\App\Services\PublicDirectory::class)->listed('doctor', Doctor::query())->select('id', 'department_id', 'location_id', 'slug', 'name', 'image')->with([
             'translation'            => function ($query) {
                 $query->select('doctor_id', 'designations');
             },
@@ -616,12 +611,7 @@ class HomeController extends Controller {
             'socialMedia'            => function ($query) {
                 $query->select('doctor_id', 'link', 'icon')->active();
             },
-        ])->orderBy('name', 'asc')->active()
-            ->whereHas('subscriptions', function ($query) {
-                $query->where('status', 'approved')
-                    ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->whereJsonContains('entitlements->search_visibility', true);
-            });
+        ])->orderBy('name', 'asc')->active();
 
         if ($location_id) {
             $doctors = $doctors->where('location_id', $location_id);
@@ -661,7 +651,7 @@ class HomeController extends Controller {
     }
 
     public function doctorDetails(Request $request, $slug) {
-        $doctor = app(\App\Services\LicenceVerification::class)->apply(Doctor::query(), 'doctor')->select('id', 'department_id', 'location_id', 'slug', 'name', 'email', 'phone', 'whatsapp', 'fee','years_of_experience', 'image')->publiclyVisible()->with([
+        $doctor = app(\App\Services\PublicDirectory::class)->listed('doctor', Doctor::query())->select('id', 'department_id', 'location_id', 'slug', 'name', 'email', 'phone', 'whatsapp', 'fee','years_of_experience', 'image')->with([
             'translation'            => function ($query) {
                 $query->select('doctor_id', 'seo_title', 'seo_description', 'designations', 'about', 'address', 'educations', 'experience', 'qualifications');
             },
@@ -678,11 +668,6 @@ class HomeController extends Controller {
                 $query->select('doctor_id', 'link', 'icon')->active();
             },
         ])->active()
-            ->whereHas('subscriptions', function ($query) {
-                $query->where('status', 'approved')
-                    ->where(fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', now()))
-                    ->whereJsonContains('entitlements->search_visibility', true);
-            })
             ->whereSlug($slug)
             ->first();
         if (!$doctor) {

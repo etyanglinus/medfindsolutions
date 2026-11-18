@@ -104,6 +104,7 @@
                                                 <th width="10%">{{ __('Specialty') }}</th>
                                                 <th width="10%">{{ __('Services') }}</th>
                                                 <th width="15%">{{ __('Subscription Payment') }}</th>
+                                                <th width="15%">{{ __('Public listing') }}</th>
                                                 <th width="10%">{{ __('Show Homepage') }}</th>
                                                 <th width="15%">{{ __('Status') }}</th>
                                                 <th width="15%">{{ __('Action') }}</th>
@@ -134,6 +135,10 @@
                                                     </td>
 
                                                     <td>
+                                                        @include('admin.partials.listing-status', ['type' => 'doctor', 'client' => $doctor])
+                                                        @include('admin.partials.activate-plan', ['type' => 'doctor', 'client' => $doctor])
+                                                    </td>
+                                                    <td>
                                                         @if ($doctor->show_homepage == 1)
                                                             <span class="badge bg-success">{{ __('Yes') }}</span>
                                                         @else
@@ -141,16 +146,15 @@
                                                         @endif
                                                     </td>
                                                     <td>
-                                                        @if ($doctor?->email_verified_at)
-                                                            <input onchange="changeStatus({{ $doctor->id }})"
-                                                                id="status_toggle" type="checkbox"
-                                                                {{ $doctor->status ? 'checked' : '' }} data-toggle="toggle"
-                                                                data-onlabel="{{ __('Active') }}"
-                                                                data-offlabel="{{ __('Inactive') }}" data-onstyle="success"
-                                                                data-offstyle="danger">
-                                                        @else
-                                                            <span class="badge bg-warning">{{ __('Not verified') }}</span>
-                                                        @endif
+                                                        <input onchange="changeStatus({{ $doctor->id }})"
+                                                            id="status_toggle" type="checkbox"
+                                                            {{ $doctor->status ? 'checked' : '' }} data-toggle="toggle"
+                                                            data-onlabel="{{ __('Active') }}"
+                                                            data-offlabel="{{ __('Inactive') }}" data-onstyle="success"
+                                                            data-offstyle="danger">
+                                                        @unless ($doctor?->email_verified_at)
+                                                            <small class="d-block text-muted mt-1">{{ __('Email not confirmed yet (needed to sign in, not to be listed)') }}</small>
+                                                        @endunless
                                                     </td>
                                                     <td>
                                                         <x-admin.view-button :href="route('admin.doctor.show', ['doctor' => $doctor->id])" />
@@ -163,7 +167,7 @@
                                                 </tr>
                                             @empty
                                                 <x-empty-table :name="__('Doctor')" route="admin.doctor.create" create="no"
-                                                    :message="__('No data found!')" colspan="8" />
+                                                    :message="__('No data found!')" colspan="9" />
                                             @endforelse
                                         </tbody>
                                     </table>

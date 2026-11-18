@@ -202,7 +202,7 @@ class ProviderPaystackService
      * specialist/facility tables, activate the account and mark the payment paid. Shared by
      * Paystack settlement and fully discounted (free) plans.
      */
-    private function activate(ProviderPaymentTransaction $payment, ProviderProfile $profile, ProviderSubscription $subscription, Model $client, array $payload, string $method): void
+    public function activate(ProviderPaymentTransaction $payment, ProviderProfile $profile, ProviderSubscription $subscription, Model $client, array $payload, string $method): void
     {
         $expires = $profile->subscriptions()->where('status', 'approved')->where('expires_at', '>', now())->max('expires_at');
         if (in_array($profile->provider_type, ['doctor', 'clinic'])) {
@@ -227,7 +227,7 @@ class ProviderPaystackService
      * A plan whose price a coupon brings to zero (or a free plan) needs no Paystack checkout:
      * record a zero-amount "coupon" payment and activate straight away, exactly as a paid one.
      */
-    private function activateFree(Model $client, string $type, array $plan, array $quote, ?string $email): ProviderPaymentTransaction
+    public function activateFree(Model $client, string $type, array $plan, array $quote, ?string $email): ProviderPaymentTransaction
     {
         return DB::transaction(function () use ($client, $type, $plan, $quote, $email) {
             $profile = ProviderProfile::firstOrCreate(['provider_type' => $type, 'provider_id' => $client->id], ['status' => 'pending_payment']);

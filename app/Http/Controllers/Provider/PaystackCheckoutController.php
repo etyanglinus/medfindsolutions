@@ -29,8 +29,20 @@ class PaystackCheckoutController extends Controller
 
     private function checkout(Request $request, $client, string $type)
     {
-        $data = $request->validate(['package' => ['required', 'string'], 'coupon_code' => ['nullable', 'string', 'max:60']]);
+        $data = $request->validate(['package' => ['required', 'string'], 'coupon_code' => ['nullable', 'string', 'max:60'], 'method' => ['nullable', 'in:paystack,paybill']]);
         $service = app(ProviderPaystackService::class);
+        if (($data['method'] ?? null) === 'paybill') {
+            // Manual M-Pesa paybill: show the paybill details and collect the M-Pesa code for an admin to confirm.
+            try {
+                $payment = app(\App\Services\ManualPaymentService::class)->startPaybill($client, $type, $data['package'], $data['coupon_code'] ?? null);
+            } catch (HttpException $e) {
+                return redirect()->to($this->planPageUrl($type, $client))->withInput()->with(['message' => $e->getMessage(), 'alert-type' => 'error']);
+            }
+            if ($payment->status === ProviderPaymentTransaction::STATUS_PAID) {
+                return redirect()->to($this->dashboardUrl($type) ?? route('login', ['type' => $type]))->with(['message' => __('Your coupon covers the full price. Your subscription is active.'), 'alert-type' => 'success']);
+            }
+            return redirect()->to(\App\Services\ManualPaymentService::paymentUrl($payment));
+        }
         try {
             $payment = $service->createAttempt($client, $type, $data['package'], $data['coupon_code'] ?? null);
             if ($payment->status === ProviderPaymentTransaction::STATUS_PAID && $payment->gateway === 'coupon') {

@@ -55,9 +55,13 @@ Route::group(['middleware'=>'translation', 'as' => 'admin.', 'prefix' => 'admin'
         Route::post('provider-profiles/{profile}/verify', [ProviderProfileController::class, 'verify'])->name('provider-profiles.verify');
         Route::post('provider-profiles/{profile}/publish', [ProviderProfileController::class, 'publish'])->name('provider-profiles.publish');
         Route::post('provider-profiles/{profile}/changes', [ProviderProfileController::class, 'requestChanges'])->name('provider-profiles.changes');
+        Route::post('provider-profiles/{profile}/unpublish', [ProviderProfileController::class, 'unpublish'])->name('provider-profiles.unpublish');
         Route::post('provider-profiles/{profile}/suspend', [ProviderProfileController::class, 'suspend'])->name('provider-profiles.suspend');
         Route::get('provider-payments', [ProviderPaymentReviewController::class, 'index'])->name('provider-payments.index');
         Route::get('provider-payments/{transaction}/receipt', [\App\Http\Controllers\ProviderReceiptController::class, 'admin'])->name('provider-payments.receipt');
+        Route::post('provider-payments/{transaction}/paybill-approve', [\App\Http\Controllers\Admin\ManualPaymentController::class, 'approve'])->name('provider-payments.paybill-approve');
+        Route::post('provider-payments/{transaction}/paybill-reject', [\App\Http\Controllers\Admin\ManualPaymentController::class, 'reject'])->name('provider-payments.paybill-reject');
+        Route::post('providers/{type}/{id}/activate-plan', [\App\Http\Controllers\Admin\ManualPaymentController::class, 'activate'])->whereIn('type', ['doctor', 'clinic', 'school', 'supplier'])->whereNumber('id')->name('providers.activate-plan');
         Route::post('provider-payments/{transaction}/checkout', [\App\Http\Controllers\Provider\PaystackCheckoutController::class, 'retry'])->name('provider-payments.checkout');
         Route::post('provider-payments/{transaction}/review', [ProviderPaymentReviewController::class, 'update'])->name('provider-payments.update');
         Route::post('provider-payments/{transaction}/recheck', [ProviderPaymentReviewController::class, 'recheck'])->middleware('throttle:20,1')->name('provider-payments.recheck');
