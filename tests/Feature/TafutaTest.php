@@ -97,6 +97,18 @@ class TafutaTest extends TestCase
         foreach (TafutaTools::definitions() as $tool) $this->assertSame('object', $tool['input_schema']['type']);
     }
 
+    public function test_tafuta_answers_simple_questions_locally_without_a_claude_key(): void
+    {
+        config(['services.tafuta.api_key' => null]);
+        $this->doctor('dr-heart-kisumu', 'Cardiology', 'Milimani, Kisumu');
+
+        $this->postJson(route('tafuta.message'), ['message' => 'I need a heart doctor in Kisumu'])
+            ->assertOk()->assertJsonPath('cards.0.name', 'Dr Heart Kisumu')->assertJsonPath('offer_claude', false);
+        $this->postJson(route('tafuta.message'), ['message' => 'What does a dermatologist do?'])
+            ->assertOk()->assertJsonPath('reply', 'A dermatologist is a doctor who specialises in skin, hair and nails.');
+        $this->assertCount(0, $this->api->requests);
+    }
+
     public function test_chat_runs_the_tool_loop_and_continues_the_conversation(): void
     {
         $this->doctor('dr-heart-kisumu', 'Cardiology', 'Milimani, Kisumu');
@@ -106,7 +118,12 @@ class TafutaTest extends TestCase
             self::message([['type' => 'text', 'text' => 'Karibu! Unahitaji nini kingine?']], 'end_turn'),
         ];
 
-        $first = $this->postJson(route('tafuta.message'), ['message' => 'I need a heart doctor in Kisumu'])->assertOk()->json();
+        $question = 'Can you help me compare heart specialists in Kisumu?';
+        $this->postJson(route('tafuta.message'), ['message' => $question])
+            ->assertOk()->assertJsonPath('offer_claude', true);
+        $this->assertCount(0, $this->api->requests, 'Wait for the visitor to choose Claude.');
+
+        $first = $this->postJson(route('tafuta.message'), ['message' => $question, 'use_claude' => true])->assertOk()->json();
         $this->assertStringContainsString('Dr Heart Kisumu', $first['reply']);
         $this->assertFalse($first['emergency']);
         $this->assertSame('Dr Heart Kisumu', $first['cards'][0]['name']);
@@ -123,7 +140,7 @@ class TafutaTest extends TestCase
         $this->assertSame('Dr Heart Kisumu', $toolResult['results'][0]['name']);
 
         // Second visitor message replays the stored history unchanged, thinking signature included.
-        $this->postJson(route('tafuta.message'), ['message' => 'Asante'])->assertOk()->assertJsonPath('reply', 'Karibu! Unahitaji nini kingine?');
+        $this->postJson(route('tafuta.message'), ['message' => 'Asante', 'use_claude' => true])->assertOk()->assertJsonPath('reply', 'Karibu! Unahitaji nini kingine?');
         $history = $this->api->requests[2]['messages'];
         $this->assertSame('sig-1', $history[1]['content'][0]['signature']);
         $this->assertSame('Asante', end($history)['content']);
@@ -133,22 +150,23 @@ class TafutaTest extends TestCase
         // New chat starts a fresh conversation.
         $this->postJson(route('tafuta.reset'))->assertOk();
         $this->api->queue = [self::message([['type' => 'text', 'text' => 'Hello again']], 'end_turn')];
-        $this->postJson(route('tafuta.message'), ['message' => 'Hi'])->assertOk();
+        $this->postJson(route('tafuta.message'), ['message' => 'Hi', 'use_claude' => true])->assertOk();
         $this->assertSame(2, DB::table('tafuta_conversations')->count());
     }
 
     public function test_emergency_messages_are_flagged_and_limits_hold(): void
     {
-        $this->api->queue = [self::message([['type' => 'text', 'text' => 'Call 999 or 112 now.']], 'end_turn')];
-        $this->postJson(route('tafuta.message'), ['message' => 'My father has chest pain and is sweating'])->assertOk()->assertJsonPath('emergency', true);
+        $this->postJson(route('tafuta.message'), ['message' => 'My father has chest pain and is sweating', 'use_claude' => true])->assertOk()->assertJsonPath('emergency', true)->assertJsonPath('offer_claude', false);
+        $this->assertCount(0, $this->api->requests);
         $this->assertTrue(TafutaAssistant::isEmergency('Siwezi kupumua vizuri'));
 
         $this->api->queue = [self::message([['type' => 'text', 'text' => 'Sorry.']], 'refusal')];
-        $this->postJson(route('tafuta.message'), ['message' => 'something off topic'])->assertOk()->assertJsonPath('cards', []);
+        $this->postJson(route('tafuta.message'), ['message' => 'something off topic', 'use_claude' => true])->assertOk()->assertJsonPath('cards', []);
 
-        $this->settings(['tafuta_status' => '1', 'tafuta_daily_limit' => '2']);
-        $this->postJson(route('tafuta.message'), ['message' => 'one more'])->assertOk()->assertJson(fn ($json) => $json->where('reply', fn ($r) => str_contains($r, 'resting for today'))->etc());
-        $this->assertCount(2, $this->api->requests, 'No API call once the daily cap is reached.');
+        $this->settings(['tafuta_status' => '1', 'tafuta_daily_limit' => '1']);
+        $this->postJson(route('tafuta.message'), ['message' => 'one more', 'use_claude' => true])->assertOk()->assertJson(fn ($json) => $json->where('reply', fn ($r) => str_contains($r, 'resting for today'))->etc());
+        $this->assertCount(1, $this->api->requests, 'No API call once the daily cap is reached.');
+        $this->postJson(route('tafuta.message'), ['message' => 'hi'])->assertOk()->assertJsonPath('offer_claude', false);
 
         $this->settings(['tafuta_status' => '0']);
         $this->postJson(route('tafuta.message'), ['message' => 'hi'])->assertNotFound();
@@ -163,6 +181,8 @@ class TafutaTest extends TestCase
 
         $this->get(route('website.doctors'))->assertOk()->assertSee('Ask Tafuta');
         config(['services.tafuta.api_key' => null]);
+        $this->get(route('website.doctors'))->assertOk()->assertSee('Ask Tafuta');
+        $this->settings(['tafuta_status' => '0']);
         $this->get(route('website.doctors'))->assertOk()->assertDontSee('Ask Tafuta');
     }
 }

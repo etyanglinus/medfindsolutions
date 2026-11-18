@@ -36,7 +36,12 @@ class TafutaAssistant
     public static function enabled(): bool
     {
         $setting = Cache::get('setting');
-        return (string) ($setting->tafuta_status ?? '0') === '1' && filled(config('services.tafuta.api_key'));
+        return (string) ($setting->tafuta_status ?? '0') === '1';
+    }
+
+    public static function claudeAvailable(): bool
+    {
+        return filled(config('services.tafuta.api_key'));
     }
 
     public static function isEmergency(string $text): bool
