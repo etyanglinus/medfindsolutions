@@ -42,7 +42,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div class="d-flex flex-wrap gap-2">
             <a class="mf-pp-pill {{ !$filter ? 'active' : '' }}" href="{{ $filterUrl(null) }}">{{ __('All') }} <span class="count">{{ $counts['all'] }}</span></a>
-            <a class="mf-pp-pill {{ $filter === 'listed' ? 'active' : '' }}" href="{{ $filterUrl('listed') }}"><i class="fas fa-globe-africa"></i> {{ __('On the website') }} <span class="count">{{ $counts['listed'] }}</span></a>
+            <a class="mf-pp-pill {{ $filter === 'listed' ? 'active' : '' }}" href="{{ $filterUrl('listed') }}"><i class="fas fa-globe-africa"></i> {{ __('Listed') }} <span class="count">{{ $counts['listed'] }}</span></a>
             <a class="mf-pp-pill {{ $filter === 'hidden' ? 'active' : '' }}" href="{{ $filterUrl('hidden') }}"><i class="fas fa-eye-slash"></i> {{ __('Hidden') }} <span class="count">{{ $counts['all'] - $counts['listed'] }}</span></a>
             <a class="mf-pp-pill {{ $filter === 'review' ? 'active' : '' }}" href="{{ $filterUrl('review') }}"><i class="fas fa-clipboard-check"></i> {{ __('Needs review') }} <span class="count">{{ $counts['review'] }}</span></a>
             @if($counts['suspended'])<a class="mf-pp-pill {{ $filter === 'suspended' ? 'active' : '' }}" href="{{ $filterUrl('suspended') }}">{{ __('Suspended') }} <span class="count">{{ $counts['suspended'] }}</span></a>@endif
@@ -60,6 +60,7 @@
     @php
         $client = $profile->provider;
         $steps = $onboarding->status($client, $profile->provider_type);
+        $profileIncomplete = !$steps['photo'] || !empty($steps['missing']);
         $docs = $client->documents ?? collect();
         $validLicence = $licences->hasValidLicence($profile->provider_type, $client->id);
         $pendingDocs = $docs->where('status', 'pending')->count();
@@ -98,10 +99,13 @@
                 <div class="mb-2">
                     @if($listing['listed'])
                         <span class="badge bg-success badge-success"><i class="fas fa-globe-africa"></i> {{ __('On the website') }}</span>
-                        <a class="small ms-1 ml-1" href="{{ $listing['url'] }}" target="_blank" rel="noopener">{{ __('View page') }}</a>
+                        <a class="small ms-1 ml-1" href="{{ $listing['url'] }}" target="_blank" rel="noopener">{{ __('View public page') }}</a>
                     @else
                         <span class="badge bg-secondary badge-secondary"><i class="fas fa-eye-slash"></i> {{ __('Hidden') }}</span>
                         <span class="small text-muted ms-1 ml-1">{{ implode(' · ', $listing['reasons']) }}</span>
+                    @endif
+                    @if($profileIncomplete)
+                        <div class="small text-muted mt-1">{{ __('Profile not completed') }}</div>
                     @endif
                 </div>
                 <div class="d-flex flex-wrap gap-1">
@@ -109,7 +113,12 @@
                         @if(!$validLicence)
                             <a class="btn btn-sm btn-warning" href="{{ route('admin.provider-documents.index', ['provider_type' => $profile->provider_type, 'provider_id' => $profile->provider_id]) }}"><i class="fas fa-id-card"></i> {{ $pendingDocs ? __('Review licence') : __('View documents') }}</a>
                         @endif
-                        @if(!$published && $profile->status !== 'suspended')
+                        @if(!$published && $profile->status !== 'suspended' && $profileIncomplete && $validLicence && $steps['document'] && $listing['plan'] && !$listing['expired'])
+                            <form method="POST" action="{{ route('admin.provider-profiles.publish', $profile) }}">
+                                @csrf
+                                <button type="submit" name="allow_incomplete_listing" value="1" class="btn btn-sm btn-primary">{{ __('Show listing') }}</button>
+                            </form>
+                        @elseif(!$published && $profile->status !== 'suspended')
                             <form method="POST" action="{{ route('admin.provider-profiles.publish', $profile) }}">@csrf<button class="btn btn-sm btn-primary" @if(!$validLicence) title="{{ __('Approve the licence first') }}" @endif><i class="fas fa-upload"></i> {{ __('Publish') }}</button></form>
                         @elseif($published)
                             <form method="POST" action="{{ route('admin.provider-profiles.unpublish', $profile) }}" onsubmit="return confirm('{{ __('Take this listing off the website?') }}')">@csrf<button class="btn btn-sm btn-outline-secondary"><i class="fas fa-eye-slash"></i> {{ __('Unpublish') }}</button></form>
