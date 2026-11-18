@@ -42,7 +42,7 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div class="d-flex flex-wrap gap-2">
             <a class="mf-pp-pill {{ !$filter ? 'active' : '' }}" href="{{ $filterUrl(null) }}">{{ __('All') }} <span class="count">{{ $counts['all'] }}</span></a>
-            <a class="mf-pp-pill {{ $filter === 'listed' ? 'active' : '' }}" href="{{ $filterUrl('listed') }}"><i class="fas fa-globe-africa"></i> {{ __('Listed') }} <span class="count">{{ $counts['listed'] }}</span></a>
+            <a class="mf-pp-pill {{ $filter === 'listed' ? 'active' : '' }}" href="{{ $filterUrl('listed') }}"><i class="fas fa-globe-africa"></i> {{ __('On the website') }} <span class="count">{{ $counts['listed'] }}</span></a>
             <a class="mf-pp-pill {{ $filter === 'hidden' ? 'active' : '' }}" href="{{ $filterUrl('hidden') }}"><i class="fas fa-eye-slash"></i> {{ __('Hidden') }} <span class="count">{{ $counts['all'] - $counts['listed'] }}</span></a>
             <a class="mf-pp-pill {{ $filter === 'review' ? 'active' : '' }}" href="{{ $filterUrl('review') }}"><i class="fas fa-clipboard-check"></i> {{ __('Needs review') }} <span class="count">{{ $counts['review'] }}</span></a>
             @if($counts['suspended'])<a class="mf-pp-pill {{ $filter === 'suspended' ? 'active' : '' }}" href="{{ $filterUrl('suspended') }}">{{ __('Suspended') }} <span class="count">{{ $counts['suspended'] }}</span></a>@endif
